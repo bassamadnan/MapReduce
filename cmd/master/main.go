@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	m_utils "mapreduce/internal/master"
 	mpb "mapreduce/pkg/proto/master"
 	"net"
 	"sync"
@@ -11,6 +12,16 @@ import (
 	"google.golang.org/grpc"
 )
 
+/*
+Users submit jobs to a scheduling system. Each job
+consists of a set of tasks, and is mapped by the scheduler
+to a set of available machines within a cluster
+
+Assumptions:
+1. On failure, tasks are re-executed by a different worker
+2. Number of tasks depends on number of workers (the size of a task is equally divided among workers)
+this does not matter really, since we will test with killing workers, just a starting point to divide tasks
+*/
 const (
 	NUM_WORKERS       = 5
 	BASE_WORKERS_ADDR = "localhost:7070"
@@ -31,6 +42,12 @@ func (s *Server) PingWorker(ctx context.Context, req *mpb.PingRequest) (*mpb.Pin
 }
 
 func main() {
+	tasks, _ := m_utils.GetMapTasks(&m_utils.Job{
+		InputFileName:   "data/input_1.txt",
+		OutputDirectory: ".",
+		NumWorkers:      NUM_WORKERS,
+	})
+	fmt.Printf(("%v\n"), tasks)
 	lis, err := net.Listen("tcp", fmt.Sprintf(":%d", 5050))
 	if err != nil {
 		log.Fatalf("failed to listen: %v", err)
