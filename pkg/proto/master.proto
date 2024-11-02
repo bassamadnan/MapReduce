@@ -1,0 +1,14 @@
+syntax = "proto3";
+package mapreduce;
+option go_package="pkg/proto/master;mpb"; // master protobuf
+
+service MasterService{
+    rpc PingWorker(PingRequest) returns (PingResponse) {}
+}
+
+message PingRequest {
+    string ID = 1;
+}
+message PingResponse{
+    bool response = 1;
+}
