@@ -27,12 +27,12 @@ func GetMapTasks(job *Job) ([]Task, error) {
 	}
 	fmt.Printf("totalLines %v, numworkers: %v\n", totalLines, job.NumWorkers)
 	// split tasks equally among workers
-	linesPerWorker := totalLines / job.NumWorkers
-	extraLines := totalLines % job.NumWorkers
-	tasks := make([]Task, job.NumWorkers)
+	linesPerSplit := totalLines / job.Split
+	extraLines := totalLines % job.Split
+	tasks := make([]Task, job.Split)
 	currentLine := 1
-	for i := 0; i < job.NumWorkers; i++ {
-		lines := linesPerWorker
+	for i := 0; i < job.Split; i++ {
+		lines := linesPerSplit
 		if extraLines > 0 {
 			lines++
 			extraLines--

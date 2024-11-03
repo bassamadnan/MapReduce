@@ -23,17 +23,18 @@ const (
 )
 
 type Worker struct {
-	Status       int
-	LastPingTime time.Time
-	PingResponse int
-	AssignedTask int
+	Status          int
+	LastPingTime    time.Time
+	PingResponse    int
+	AssignedTask    int
+	OutputDirectory string // workers local disk directory
 }
 
 // job submitted to map reduce, to be split into tasks and assigned to workers
 type Job struct {
-	InputFileName   string // data to be processed
-	OutputDirectory string // map output before reduce phase, to be stored on local disk of the worker
-	NumWorkers      int    // number of total workers (initially)
+	InputFileName string // data to be processed
+	NumWorkers    int    // number of total workers (initially)
+	Split         int    // number of splits
 }
 
 // tasks

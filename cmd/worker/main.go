@@ -1,14 +1,15 @@
 package main
 
 import (
-	"context"
+	"flag"
 	"fmt"
 	"log"
+	w_utils "mapreduce/internal/worker"
 	mpb "mapreduce/pkg/proto/master"
-	"time"
+	wpb "mapreduce/pkg/proto/worker"
+	"net"
 
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
 )
 
 type Client struct {
@@ -16,27 +17,21 @@ type Client struct {
 	ID     string
 }
 
-func (c *Client) PingMaster() {
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-	resp, err := c.Client.PingWorker(ctx, &mpb.PingRequest{ID: c.ID})
-	if err != nil {
-		log.Fatalf("error in getting servers %v\n", err)
-	}
-	fmt.Printf("status: %v\n", resp.Response)
-}
 func main() {
-	BASE_SERVER_ADDR := "localhost:5050"
-	opts := []grpc.DialOption{grpc.WithTransportCredentials(insecure.NewCredentials())}
-	conn, err := grpc.NewClient(BASE_SERVER_ADDR, opts...)
-	if err != nil {
-		log.Fatalf("conn failed %v", err)
-	}
-	defer conn.Close()
-	client := Client{
-		Client: mpb.NewMasterServiceClient(conn),
-		ID:     "4",
-	}
-	client.PingMaster()
+	port := flag.Int("port", 7070, "")
+	flag.Parse()
 
+	lis, err := net.Listen("tcp", fmt.Sprintf(":%d", *port))
+	if err != nil {
+		log.Fatalf("failed to listen: %v", err)
+	}
+
+	s := grpc.NewServer()
+	wpb.RegisterWorkerServiceServer(s, &w_utils.Server{
+		ID: *port,
+	})
+
+	if err := s.Serve(lis); err != nil {
+		log.Fatalf("failed to serve: %v", err)
+	}
 }

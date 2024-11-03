@@ -1,0 +1,14 @@
+syntax = "proto3";
+package mapreduce;
+option go_package="pkg/proto/worker;wpb"; // worker protobuf
+
+service WorkerService{
+    rpc SendTask(TaskDescription) returns (Empty) {}
+}
+
+message Empty {}
+
+message TaskDescription {
+    int32 start = 1;
+    int32 end = 2;
+}
