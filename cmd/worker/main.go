@@ -8,13 +8,18 @@ import (
 	mpb "mapreduce/pkg/proto/master"
 	wpb "mapreduce/pkg/proto/worker"
 	"net"
+	"os"
+	"os/signal"
+	"strconv"
+	"syscall"
 
 	"google.golang.org/grpc"
 )
 
 type Client struct {
-	Client mpb.MasterServiceClient
-	ID     string
+	Client          mpb.MasterServiceClient
+	ID              string
+	OutputDirectory string
 }
 
 func main() {
@@ -26,12 +31,20 @@ func main() {
 		log.Fatalf("failed to listen: %v", err)
 	}
 
+	w := w_utils.WorkerMachine{}
+	w.Initialize("localhost:5050", strconv.Itoa(*port))
 	s := grpc.NewServer()
-	wpb.RegisterWorkerServiceServer(s, &w_utils.Server{
-		ID: *port,
-	})
+	wpb.RegisterWorkerServiceServer(s, w.ServerInstance)
 
-	if err := s.Serve(lis); err != nil {
-		log.Fatalf("failed to serve: %v", err)
-	}
+	go func() {
+		if err := s.Serve(lis); err != nil {
+			log.Fatalf("failed to serve: %v", err)
+		}
+	}()
+
+	// exit program
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, os.Interrupt, syscall.SIGTERM)
+	<-quit
+	s.GracefulStop()
 }

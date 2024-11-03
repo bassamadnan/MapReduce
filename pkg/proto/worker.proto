@@ -11,4 +11,5 @@ message Empty {}
 message TaskDescription {
     int32 start = 1;
     int32 end = 2;
+    int32 taskID = 3;
 }

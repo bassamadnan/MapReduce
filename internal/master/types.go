@@ -27,15 +27,20 @@ const (
 	REDUCE_TASK
 )
 
+// used for task type
+const (
+	PENDING  = iota // task is available for the worker
+	ASSIGNED        // worker is working on this task
+)
+
 type Worker struct {
-	Status          int
-	LastPingTime    time.Time
-	PingResponse    int
-	AssignedTask    int
-	OutputDirectory string                  // workers local disk directory
-	Addr            string                  // localhost address of the worker machine
-	Client          wpb.WorkerServiceClient // for the master to communicate with this worker
-	Conn            *grpc.ClientConn
+	Status       int
+	LastPingTime time.Time
+	PingResponse int
+	AssignedTask int
+	Addr         string                  // localhost address of the worker machine, also servers as worker id
+	Client       wpb.WorkerServiceClient // for the master to communicate with this worker
+	Conn         *grpc.ClientConn
 }
 
 // job submitted to map reduce, to be split into tasks and assigned to workers
@@ -45,10 +50,12 @@ type Job struct {
 	Split         int    // number of splits
 }
 
-// tasks
+// tasks, do we need client here?
 type Task struct {
-	TaskID   int
-	Start    int // strat of the input file line no
-	End      int // end of the input file line no
-	TaskType int
+	TaskID         int
+	Start          int // start of the input file line no
+	End            int // end of the input file line no
+	TaskType       int
+	TaskStatus     int
+	OutputLocation string // destination of the  output after its completed
 }
