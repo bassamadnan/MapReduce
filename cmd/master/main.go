@@ -2,14 +2,10 @@ package main
 
 import (
 	"fmt"
-	"log"
 	m_utils "mapreduce/internal/master"
 	mpb "mapreduce/pkg/proto/master"
-	wpb "mapreduce/pkg/proto/worker"
-	"net"
 
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
 )
 
 /*
@@ -30,17 +26,18 @@ const (
 
 func main() {
 	// setup server
-	lis, err := net.Listen("tcp", fmt.Sprintf(":%d", 5050))
-	if err != nil {
-		log.Fatalf("failed to listen: %v", err)
+	// lis, err := net.Listen("tcp", fmt.Sprintf(":%d", 5050))
+	// if err != nil {
+	// 	log.Fatalf("failed to listen: %v", err)
+	// }
+	masterServer := &m_utils.Server{
+		NumWorkers: NUM_WORKERS,
 	}
 	s := grpc.NewServer()
-	mpb.RegisterMasterServiceServer(s, &m_utils.Server{
-		NumWorkers: NUM_WORKERS,
-	})
-	if err := s.Serve(lis); err != nil {
-		log.Fatalf("failed to serve: %v", err)
-	}
+	mpb.RegisterMasterServiceServer(s, masterServer)
+	// if err := s.Serve(lis); err != nil {
+	// 	log.Fatalf("failed to serve: %v", err)
+	// }
 	// create map tasks
 	tasks, _ := m_utils.GetMapTasks(&m_utils.Job{
 		InputFileName: "data/input_1.txt",
@@ -50,15 +47,7 @@ func main() {
 	fmt.Printf(("%v\n"), tasks)
 	// connect to all worker machines
 	serviceRegistry := []string{"localhost:7070", "localhost:7071", "localhost:7072", "localhost:7073"}
-	opts := []grpc.DialOption{grpc.WithTransportCredentials(insecure.NewCredentials())}
-	conn, err := grpc.NewClient(BASE_SERVER_ADDR, opts...)
-	if err != nil {
-		log.Fatalf("conn failed %v", err)
-	}
-	defer conn.Close()
-	// crdt.IsCRDT(&doc)
-	client = m_utils.MasterClient{
-		Client: wpb.NewWorkerServiceClient(conn),
-	}
+	masterServer.SetupWorkerClients(serviceRegistry)
+	masterServer.AssignTasks(tasks)
 
 }

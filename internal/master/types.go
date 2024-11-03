@@ -1,6 +1,11 @@
 package m_utils
 
-import "time"
+import (
+	wpb "mapreduce/pkg/proto/worker"
+	"time"
+
+	"google.golang.org/grpc"
+)
 
 // used for worker status
 const (
@@ -27,7 +32,10 @@ type Worker struct {
 	LastPingTime    time.Time
 	PingResponse    int
 	AssignedTask    int
-	OutputDirectory string // workers local disk directory
+	OutputDirectory string                  // workers local disk directory
+	Addr            string                  // localhost address of the worker machine
+	Client          wpb.WorkerServiceClient // for the master to communicate with this worker
+	Conn            *grpc.ClientConn
 }
 
 // job submitted to map reduce, to be split into tasks and assigned to workers
