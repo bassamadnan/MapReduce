@@ -56,6 +56,7 @@ func main() {
 	// connect to all worker machines
 	serviceRegistry := []string{"localhost:7070", "localhost:7071", "localhost:7072", "localhost:7073"}
 	masterServer.SetupWorkerClients(serviceRegistry)
+	go masterServer.StartPing() // start pinging the machines periodically on background
 	masterServer.AssignTasks(tasks)
 
 	// exit program

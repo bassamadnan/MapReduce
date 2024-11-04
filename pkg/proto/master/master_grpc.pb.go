@@ -19,14 +19,14 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	MasterService_PingWorker_FullMethodName = "/mapreduce.MasterService/PingWorker"
+	MasterService_CompleteTask_FullMethodName = "/m_mapreduce.MasterService/CompleteTask"
 )
 
 // MasterServiceClient is the client API for MasterService service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type MasterServiceClient interface {
-	PingWorker(ctx context.Context, in *PingRequest, opts ...grpc.CallOption) (*PingResponse, error)
+	CompleteTask(ctx context.Context, in *TaskStatus, opts ...grpc.CallOption) (*Empty, error)
 }
 
 type masterServiceClient struct {
@@ -37,10 +37,10 @@ func NewMasterServiceClient(cc grpc.ClientConnInterface) MasterServiceClient {
 	return &masterServiceClient{cc}
 }
 
-func (c *masterServiceClient) PingWorker(ctx context.Context, in *PingRequest, opts ...grpc.CallOption) (*PingResponse, error) {
+func (c *masterServiceClient) CompleteTask(ctx context.Context, in *TaskStatus, opts ...grpc.CallOption) (*Empty, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(PingResponse)
-	err := c.cc.Invoke(ctx, MasterService_PingWorker_FullMethodName, in, out, cOpts...)
+	out := new(Empty)
+	err := c.cc.Invoke(ctx, MasterService_CompleteTask_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -51,7 +51,7 @@ func (c *masterServiceClient) PingWorker(ctx context.Context, in *PingRequest, o
 // All implementations must embed UnimplementedMasterServiceServer
 // for forward compatibility.
 type MasterServiceServer interface {
-	PingWorker(context.Context, *PingRequest) (*PingResponse, error)
+	CompleteTask(context.Context, *TaskStatus) (*Empty, error)
 	mustEmbedUnimplementedMasterServiceServer()
 }
 
@@ -62,8 +62,8 @@ type MasterServiceServer interface {
 // pointer dereference when methods are called.
 type UnimplementedMasterServiceServer struct{}
 
-func (UnimplementedMasterServiceServer) PingWorker(context.Context, *PingRequest) (*PingResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method PingWorker not implemented")
+func (UnimplementedMasterServiceServer) CompleteTask(context.Context, *TaskStatus) (*Empty, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method CompleteTask not implemented")
 }
 func (UnimplementedMasterServiceServer) mustEmbedUnimplementedMasterServiceServer() {}
 func (UnimplementedMasterServiceServer) testEmbeddedByValue()                       {}
@@ -86,20 +86,20 @@ func RegisterMasterServiceServer(s grpc.ServiceRegistrar, srv MasterServiceServe
 	s.RegisterService(&MasterService_ServiceDesc, srv)
 }
 
-func _MasterService_PingWorker_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(PingRequest)
+func _MasterService_CompleteTask_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(TaskStatus)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(MasterServiceServer).PingWorker(ctx, in)
+		return srv.(MasterServiceServer).CompleteTask(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: MasterService_PingWorker_FullMethodName,
+		FullMethod: MasterService_CompleteTask_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(MasterServiceServer).PingWorker(ctx, req.(*PingRequest))
+		return srv.(MasterServiceServer).CompleteTask(ctx, req.(*TaskStatus))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -108,12 +108,12 @@ func _MasterService_PingWorker_Handler(srv interface{}, ctx context.Context, dec
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
 var MasterService_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "mapreduce.MasterService",
+	ServiceName: "m_mapreduce.MasterService",
 	HandlerType: (*MasterServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
-			MethodName: "PingWorker",
-			Handler:    _MasterService_PingWorker_Handler,
+			MethodName: "CompleteTask",
+			Handler:    _MasterService_CompleteTask_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

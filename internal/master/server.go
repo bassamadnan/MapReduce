@@ -1,8 +1,6 @@
 package m_utils
 
 import (
-	"context"
-	"fmt"
 	"log"
 	mpb "mapreduce/pkg/proto/master"
 	wpb "mapreduce/pkg/proto/worker"
@@ -19,14 +17,6 @@ type Server struct {
 	Mu              sync.Mutex
 	ServiceRegistry []string // list of all worker machine address
 	Workers         []*Worker
-}
-
-// PingWorker(context.Context, *PingRequest) (*PingResponse, error)
-func (s *Server) PingWorker(ctx context.Context, req *mpb.PingRequest) (*mpb.PingResponse, error) {
-	fmt.Printf("ping from %v\n", req.ID)
-	return &mpb.PingResponse{
-		Response: true,
-	}, nil
 }
 
 // function to initialize the worker list

@@ -25,3 +25,12 @@ func (s *Server) SendTask(ctx context.Context, task *wpb.TaskDescription) (*wpb.
 	go s.WorkerMachineInstance.execTask(int(start), int(end), int(taskid), s.InputFile)
 	return &wpb.Empty{}, nil
 }
+
+// master machine will ping the worker, this will be running on the go routine hosting the worker server
+// the tasks executed by a worker will be running in the execTask go routine, so this will never be blocked by other operations
+// i.e reply will be instant
+func (s *Server) Ping(ctx context.Context, req *wpb.PingRequest) (*wpb.PingResponse, error) {
+	return &wpb.PingResponse{
+		Status: true,
+	}, nil
+}

@@ -1,14 +1,14 @@
 syntax = "proto3";
-package mapreduce;
+package m_mapreduce;
 option go_package="pkg/proto/master;mpb"; // master protobuf
 
 service MasterService{
-    rpc PingWorker(PingRequest) returns (PingResponse) {}
+    rpc CompleteTask(TaskStatus) returns (Empty) {}
 }
 
-message PingRequest {
-    string ID = 1;
-}
-message PingResponse{
-    bool response = 1;
+message Empty {}
+
+message TaskStatus {
+    int32 task_id = 1;
+    bool status = 2;
 }
