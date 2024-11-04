@@ -10,5 +10,6 @@ message Empty {}
 
 message TaskStatus {
     int32 task_id = 1;
-    bool status = 2;
+    string worker_id =2;
+    bool status = 3;
 }

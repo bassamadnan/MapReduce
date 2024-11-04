@@ -1,6 +1,8 @@
 package m_utils
 
 import (
+	"context"
+	"fmt"
 	"log"
 	mpb "mapreduce/pkg/proto/master"
 	wpb "mapreduce/pkg/proto/worker"
@@ -48,4 +50,11 @@ func (s *Server) CloseAllConnections() {
 			worker.Conn.Close()
 		}
 	}
+}
+
+// CompleteTask(context.Context, *TaskStatus) (*Empty, error)
+
+func (s *Server) CompleteTask(ctx context.Context, req *mpb.TaskStatus) (*mpb.Empty, error) {
+	fmt.Printf("Task %v completd by worker %v\n", req.TaskId, req.WorkerId)
+	return &mpb.Empty{}, nil
 }

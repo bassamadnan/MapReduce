@@ -18,9 +18,10 @@ func (w *WorkerMachine) Initialize(master_addr string, port string) {
 	os.MkdirAll(outputPath, 0777)
 	w.ServerInstance = &Server{InputFile: "data/input/input_1.txt", WorkerMachineInstance: w}
 	w.OutputDirectory = outputPath
+	w.SetupWorkerMachine(w.MasterAddr)
 }
 
-func (w *WorkerMachine) SetupWorkerMachine(master_addr string, port string) {
+func (w *WorkerMachine) SetupWorkerMachine(master_addr string) {
 	opts := []grpc.DialOption{grpc.WithTransportCredentials(insecure.NewCredentials())}
 	conn, err := grpc.NewClient(master_addr, opts...)
 	if err != nil {

@@ -16,6 +16,9 @@ func (w *WorkerMachine) execTask(start int, end int, taskID int, filePath string
 	fmt.Printf("writing to %v\n", outFile)
 	c_utils.WriteMapResults(results, outFile)
 	// notify master about this next
+
+	// fmt.Print(w.Client, w.ID, taskID, true)
+	CompleteTask(w.Client, w.ID, taskID, true)
 }
 
 // SendTask(context.Context, *TaskDescription) (*Empty, error)
