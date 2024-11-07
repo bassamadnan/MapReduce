@@ -61,17 +61,16 @@ func (s *Server) CompleteTask(ctx context.Context, req *mpb.TaskStatus) (*mpb.Em
 	fmt.Printf("Task %v completd by worker %v saved on location: %v\n", req.TaskId, req.WorkerId, req.OutputPath)
 	s.Mu.Lock()
 	workerID := GetWorkerID(req.WorkerId)
-	s.Workers[workerID].Status = IDLE
 	if req.Status {
-		s.Tasks[req.TaskId].TaskStatus = COMPLETED
+		s.Workers[workerID].Status = IDLE
 		s.Workers[workerID].AssignedTask = -1
+		s.Tasks[req.TaskId].TaskStatus = COMPLETED
 	} else {
 		s.Workers[workerID].Status = FAIL
 		s.Workers[workerID].AssignedTask = -1
 		s.Tasks[req.TaskId].TaskStatus = PENDING
 	}
 	s.Mu.Unlock()
-	fmt.Printf("assigning remaingint asks\n")
 	go s.AssignTasks() // assign remaining tasks
 	return &mpb.Empty{}, nil
 }

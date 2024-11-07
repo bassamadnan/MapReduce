@@ -25,6 +25,7 @@ func SendTask(client wpb.WorkerServiceClient, task *Task) error {
 
 func (s *Server) AssignTasks() {
 	s.Mu.Lock()
+	defer s.Mu.Unlock()
 	for i, worker := range s.Workers {
 		if s.Workers[i].Status != IDLE {
 			continue
@@ -43,7 +44,6 @@ func (s *Server) AssignTasks() {
 		}
 		fmt.Printf("assigned task %v to worker %v, worker: %v\n", task.TaskID, i, worker)
 	}
-	s.Mu.Unlock()
 }
 
 func SendPing(client wpb.WorkerServiceClient, worker_id string) error {

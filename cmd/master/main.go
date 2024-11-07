@@ -59,7 +59,22 @@ func main() {
 	masterServer.Tasks = tasks
 	go masterServer.StartPing() // start pinging the machines periodically on background
 	masterServer.AssignTasks()
-
+	// wait till all tasks are completed
+	for {
+		count := 0
+		masterServer.Mu.Lock()
+		for _, task := range masterServer.Tasks {
+			if task.TaskStatus == m_utils.COMPLETED {
+				count++
+			}
+		}
+		masterServer.Mu.Unlock()
+		if count == len(masterServer.Tasks) {
+			break
+		}
+	}
+	// shuffle sort phase
+	print("starting shuffle sort...")
 	// exit program
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, os.Interrupt, syscall.SIGTERM)
