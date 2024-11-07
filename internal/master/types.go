@@ -31,6 +31,7 @@ const (
 const (
 	PENDING  = iota // task is available for the worker
 	ASSIGNED        // worker is working on this task
+	COMPLETED
 )
 
 type Worker struct {

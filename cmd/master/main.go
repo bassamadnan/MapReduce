@@ -46,7 +46,7 @@ func main() {
 			log.Fatalf("failed to serve: %v", err)
 		}
 	}()
-	// create map tasks
+	// create map tasks, done by a scheduler in the paper, out of scope for this project
 	tasks, _ := m_utils.GetMapTasks(&m_utils.Job{
 		InputFileName: "data/input/input_1.txt",
 		NumWorkers:    NUM_WORKERS,
@@ -56,8 +56,9 @@ func main() {
 	// connect to all worker machines
 	serviceRegistry := []string{"localhost:7070", "localhost:7071", "localhost:7072", "localhost:7073"}
 	masterServer.SetupWorkerClients(serviceRegistry)
+	masterServer.Tasks = tasks
 	go masterServer.StartPing() // start pinging the machines periodically on background
-	masterServer.AssignTasks(tasks)
+	masterServer.AssignTasks()
 
 	// exit program
 	quit := make(chan os.Signal, 1)

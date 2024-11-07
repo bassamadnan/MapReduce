@@ -39,14 +39,28 @@ func GetMapTasks(job *Job) ([]Task, error) {
 		}
 
 		tasks[i] = Task{
-			TaskID:   i,
-			Start:    currentLine,
-			End:      currentLine + lines - 1,
-			TaskType: MAP_TASK,
+			TaskID:     i,
+			Start:      currentLine,
+			End:        currentLine + lines - 1,
+			TaskType:   MAP_TASK,
+			TaskStatus: PENDING,
 		}
 		currentLine += lines
 	}
 
 	return tasks, nil
 
+}
+
+func GetAvailableTask(tasks []Task) *Task {
+	for _, task := range tasks {
+		if task.TaskStatus == PENDING {
+			return &task
+		}
+	}
+	return nil
+}
+
+func GetWorkerID(port string) string {
+	return "localhost:" + port
 }

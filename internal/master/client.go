@@ -23,23 +23,33 @@ func SendTask(client wpb.WorkerServiceClient, task *Task) error {
 	return nil
 }
 
-func (s *Server) AssignTasks(tasks []Task) {
+func (s *Server) AssignTasks() {
+	s.Mu.Lock()
 	for i, worker := range s.Workers {
 		if s.Workers[i].Status != IDLE {
 			continue
 		}
-		err := SendTask(worker.Client, &tasks[i])
+		task := GetAvailableTask(s.Tasks)
+		if task == nil {
+			fmt.Print("all tasks over\n")
+			return
+		}
+		err := SendTask(worker.Client, task)
 		if err != nil {
 			s.Workers[i].Status = FAIL
+			s.Tasks[task.TaskID].TaskStatus = PENDING
+		} else {
+			s.Tasks[task.TaskID].TaskStatus = ASSIGNED
 		}
-		// tasks[i] = ASSIGNED
+		fmt.Printf("assigned task %v to worker %v, worker: %v\n", task.TaskID, i, worker)
 	}
+	s.Mu.Unlock()
 }
 
 func SendPing(client wpb.WorkerServiceClient, worker_id string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second) // timeout for ping
 	defer cancel()
-	fmt.Printf("\033[34mPing reqiest to client :%v\033[0m\n", worker_id) // blue color for request
+	fmt.Printf("\033[34mPing request to client :%v\033[0m\n", worker_id) // blue color for request
 	resp, err := client.Ping(ctx, &wpb.PingRequest{
 		Id: worker_id,
 	})
@@ -60,11 +70,23 @@ func (s *Server) StartPing() {
 
 	for {
 		var wg sync.WaitGroup
-		for _, worker := range s.Workers {
+		for i, worker := range s.Workers {
+			if s.Workers[i].Status == FAIL {
+				continue
+			}
 			wg.Add(1)
 			go func(w *Worker) {
 				defer wg.Add(-1)
-				SendPing(w.Client, w.Addr)
+				err := SendPing(w.Client, w.Addr)
+				if err != nil {
+					s.Mu.Lock()
+					s.Workers[i].Status = FAIL
+					// re assign task assigned to it
+					if s.Workers[i].AssignedTask != -1 {
+						s.Tasks[s.Workers[i].AssignedTask].TaskStatus = PENDING
+					}
+					s.Mu.Unlock()
+				}
 			}(worker)
 		}
 

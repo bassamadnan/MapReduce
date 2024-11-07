@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+
 	mpb "mapreduce/pkg/proto/master"
 	wpb "mapreduce/pkg/proto/worker"
 	"sync"
@@ -17,15 +18,16 @@ type Server struct {
 	mpb.UnimplementedMasterServiceServer
 	NumWorkers      int
 	Mu              sync.Mutex
-	ServiceRegistry []string // list of all worker machine address
-	Workers         []*Worker
+	Tasks           []Task             // list of tasks, to be cleared after map phase
+	ServiceRegistry []string           // list of all worker machine address (indxes for the map blow)
+	Workers         map[string]*Worker // worker[x] -> worker having id localhost:xxxx (xxxx : port number)
 }
 
 // function to initialize the worker list
 // takes in a list of addresses , set's up a connection with each of them
 // the id's are by default assumed to start from 0
 func (s *Server) SetupWorkerClients(serviceRegistry []string) {
-	s.Workers = make([]*Worker, len(serviceRegistry))
+	s.Workers = make(map[string]*Worker)
 	opts := []grpc.DialOption{grpc.WithTransportCredentials(insecure.NewCredentials())}
 	for i, addr := range serviceRegistry {
 
@@ -34,11 +36,12 @@ func (s *Server) SetupWorkerClients(serviceRegistry []string) {
 			s.CloseAllConnections()
 			log.Fatalf("conn failed %v", err)
 		}
-		s.Workers[i] = &Worker{
-			Status: IDLE,
-			Addr:   addr,
-			Client: wpb.NewWorkerServiceClient(conn),
-			Conn:   conn,
+		s.Workers[addr] = &Worker{
+			Status:       IDLE,
+			Addr:         addr,
+			Client:       wpb.NewWorkerServiceClient(conn),
+			Conn:         conn,
+			AssignedTask: -1,
 		}
 	}
 	s.ServiceRegistry = serviceRegistry
@@ -55,6 +58,20 @@ func (s *Server) CloseAllConnections() {
 // CompleteTask(context.Context, *TaskStatus) (*Empty, error)
 
 func (s *Server) CompleteTask(ctx context.Context, req *mpb.TaskStatus) (*mpb.Empty, error) {
-	fmt.Printf("Task %v completd by worker %v\n", req.TaskId, req.WorkerId)
+	fmt.Printf("Task %v completd by worker %v saved on location: %v\n", req.TaskId, req.WorkerId, req.OutputPath)
+	s.Mu.Lock()
+	workerID := GetWorkerID(req.WorkerId)
+	s.Workers[workerID].Status = IDLE
+	if req.Status {
+		s.Tasks[req.TaskId].TaskStatus = COMPLETED
+		s.Workers[workerID].AssignedTask = -1
+	} else {
+		s.Workers[workerID].Status = FAIL
+		s.Workers[workerID].AssignedTask = -1
+		s.Tasks[req.TaskId].TaskStatus = PENDING
+	}
+	s.Mu.Unlock()
+	fmt.Printf("assigning remaingint asks\n")
+	go s.AssignTasks() // assign remaining tasks
 	return &mpb.Empty{}, nil
 }

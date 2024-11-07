@@ -8,6 +8,7 @@ import (
 	wpb "mapreduce/pkg/proto/worker"
 )
 
+// handle error here
 func (w *WorkerMachine) execTask(start int, end int, taskID int, filePath string) {
 	lines := c_utils.GetLines(start, end, filePath)
 	results := utils.Map(lines)
@@ -18,7 +19,7 @@ func (w *WorkerMachine) execTask(start int, end int, taskID int, filePath string
 	// notify master about this next
 
 	// fmt.Print(w.Client, w.ID, taskID, true)
-	CompleteTask(w.Client, w.ID, taskID, true)
+	CompleteTask(w.Client, w.ID, taskID, true, outFile)
 }
 
 // SendTask(context.Context, *TaskDescription) (*Empty, error)
