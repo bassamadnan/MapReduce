@@ -54,11 +54,17 @@ func main() {
 	})
 	fmt.Printf(("%v\n"), tasks)
 	// connect to all worker machines
-	serviceRegistry := []string{"localhost:7070", "localhost:7071", "localhost:7072", "localhost:7073"}
+
+	serviceRegistry := []m_utils.WorkerInfo{
+		{Addr: "localhost:7070", Role: 0}, // map worker
+		{Addr: "localhost:7071", Role: 0}, // map worker
+		{Addr: "localhost:7072", Role: 1}, // reduce worker
+		{Addr: "localhost:7073", Role: 1}, // reduce worker
+	}
 	masterServer.SetupWorkerClients(serviceRegistry)
 	masterServer.Tasks = tasks
 	go masterServer.StartPing() // start pinging the machines periodically on background
-	masterServer.AssignTasks()
+	masterServer.AssignMapTasks()
 	// wait till all tasks are completed
 	for {
 		count := 0

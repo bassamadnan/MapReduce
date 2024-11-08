@@ -23,11 +23,11 @@ func SendTask(client wpb.WorkerServiceClient, task *Task) error {
 	return nil
 }
 
-func (s *Server) AssignTasks() {
+func (s *Server) AssignMapTasks() {
 	s.Mu.Lock()
 	defer s.Mu.Unlock()
 	for i, worker := range s.Workers {
-		if s.Workers[i].Status != IDLE {
+		if s.Workers[i].Status != IDLE || s.Workers[i].WorkerType != MAPPER {
 			continue
 		}
 		task := GetAvailableTask(s.Tasks)

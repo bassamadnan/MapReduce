@@ -6,4 +6,5 @@ TODO:
 3. execute  tasks on worker side (done)
 4. assign next after worker is finished with current task
 5. notify master of finished tasks after map (done)
-6. handle failures for workers
+6. simulate failures
+7. handle failures for workers (done , not tested , point 6)

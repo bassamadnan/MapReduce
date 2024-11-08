@@ -5,6 +5,8 @@ import (
 	"strings"
 )
 
+const NUM_REDUCERS = 2 // number of partitions, the R of hash(key)modR
+
 // place to keep the map and reduce functions for now
 
 /*

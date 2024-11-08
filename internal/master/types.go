@@ -2,7 +2,6 @@ package m_utils
 
 import (
 	wpb "mapreduce/pkg/proto/worker"
-	"time"
 
 	"google.golang.org/grpc"
 )
@@ -12,6 +11,12 @@ const (
 	IDLE = iota
 	WORKING
 	FAIL
+)
+
+// used for worker status
+const (
+	MAPPER = iota
+	REDUCER
 )
 
 // used for ping
@@ -36,9 +41,9 @@ const (
 
 type Worker struct {
 	Status       int
-	LastPingTime time.Time
 	PingResponse int
 	AssignedTask int
+	WorkerType   int                     //mapper or reducer
 	Addr         string                  // localhost address of the worker machine, also servers as worker id
 	Client       wpb.WorkerServiceClient // for the master to communicate with this worker
 	Conn         *grpc.ClientConn

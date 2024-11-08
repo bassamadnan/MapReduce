@@ -13,6 +13,11 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 )
 
+type WorkerInfo struct {
+	Addr string
+	Role int
+}
+
 // server side functions for grpc service of the master
 type Server struct {
 	mpb.UnimplementedMasterServiceServer
@@ -26,25 +31,31 @@ type Server struct {
 // function to initialize the worker list
 // takes in a list of addresses , set's up a connection with each of them
 // the id's are by default assumed to start from 0
-func (s *Server) SetupWorkerClients(serviceRegistry []string) {
+func (s *Server) SetupWorkerClients(serviceRegistry []WorkerInfo) {
 	s.Workers = make(map[string]*Worker)
 	opts := []grpc.DialOption{grpc.WithTransportCredentials(insecure.NewCredentials())}
-	for i, addr := range serviceRegistry {
 
-		conn, err := grpc.NewClient(serviceRegistry[i], opts...)
+	for _, worker := range serviceRegistry {
+		conn, err := grpc.NewClient(worker.Addr, opts...)
 		if err != nil {
 			s.CloseAllConnections()
 			log.Fatalf("conn failed %v", err)
 		}
-		s.Workers[addr] = &Worker{
+		s.Workers[worker.Addr] = &Worker{
 			Status:       IDLE,
-			Addr:         addr,
+			Addr:         worker.Addr,
+			WorkerType:   worker.Role, // 0 for map, 1 for reduce
 			Client:       wpb.NewWorkerServiceClient(conn),
 			Conn:         conn,
 			AssignedTask: -1,
 		}
 	}
-	s.ServiceRegistry = serviceRegistry
+
+	addresses := make([]string, len(serviceRegistry))
+	for i, worker := range serviceRegistry {
+		addresses[i] = worker.Addr
+	}
+	s.ServiceRegistry = addresses
 }
 
 func (s *Server) CloseAllConnections() {
@@ -71,6 +82,6 @@ func (s *Server) CompleteTask(ctx context.Context, req *mpb.TaskStatus) (*mpb.Em
 		s.Tasks[req.TaskId].TaskStatus = PENDING
 	}
 	s.Mu.Unlock()
-	go s.AssignTasks() // assign remaining tasks
+	go s.AssignMapTasks() // assign remaining tasks
 	return &mpb.Empty{}, nil
 }
