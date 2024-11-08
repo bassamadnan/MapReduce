@@ -7,6 +7,13 @@ import (
 	"os"
 )
 
+func GetPartition(key string) int {
+	if len(key) == 0 {
+		return 0
+	}
+	return int(key[0]) % 2 // num_reducers
+}
+
 func GetLines(start int, end int, filePath string) []string {
 	file, err := os.Open(filePath)
 	if err != nil {
@@ -31,20 +38,47 @@ func GetLines(start int, end int, filePath string) []string {
 	return lines
 }
 
-func WriteMapResults(kvPairs []KeyValue, filename string) error {
-	file, err := os.Create(filename)
-	if err != nil {
-		return err
-	}
-	defer file.Close()
+func WriteMapResults(kvPairs []KeyValue, outputDirectory string, taskID int) ([]int, error) {
+	partitions := make(map[int]bool) // use map to track unique partitions
 
-	writer := bufio.NewWriter(file)
+	partitioned := make(map[int][]KeyValue)
 	for _, kv := range kvPairs {
-		_, err := fmt.Fprintf(writer, "%s %d\n", kv.Key, kv.Value)
+		partition := GetPartition(kv.Key)
+		partitioned[partition] = append(partitioned[partition], kv)
+		partitions[partition] = true
+	}
+
+	for partition, pairs := range partitioned {
+		dirPath := fmt.Sprintf("%v/%v", outputDirectory, partition)
+		err := os.MkdirAll(dirPath, 0755)
 		if err != nil {
-			return err
+			return nil, err
+		}
+
+		filename := fmt.Sprintf("%v/task_%v.txt", dirPath, taskID)
+		file, err := os.Create(filename)
+		if err != nil {
+			return nil, err
+		}
+		defer file.Close()
+
+		writer := bufio.NewWriter(file)
+		for _, kv := range pairs {
+			_, err := fmt.Fprintf(writer, "%s %d\n", kv.Key, kv.Value)
+			if err != nil {
+				return nil, err
+			}
+		}
+		err = writer.Flush()
+		if err != nil {
+			return nil, err
 		}
 	}
 
-	return writer.Flush()
+	result := make([]int, 0, len(partitions))
+	for p := range partitions {
+		result = append(result, p)
+	}
+
+	return result, nil
 }

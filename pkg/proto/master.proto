@@ -12,5 +12,5 @@ message TaskStatus {
     int32 task_id = 1;
     string worker_id =2;
     bool status = 3;
-    string output_path=4;
+    repeated int32 partitions = 4;
 }

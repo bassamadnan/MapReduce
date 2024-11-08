@@ -4,22 +4,21 @@ import (
 	"context"
 	"fmt"
 	c_utils "mapreduce/internal/common"
-	utils "mapreduce/pkg"
 	wpb "mapreduce/pkg/proto/worker"
 )
 
 // handle error here
 func (w *WorkerMachine) execTask(start int, end int, taskID int, filePath string) {
 	lines := c_utils.GetLines(start, end, filePath)
-	results := utils.Map(lines)
+	results := c_utils.Map(lines)
 	fmt.Printf("results :%v\n", results)
 	outFile := fmt.Sprintf("%v/task_%v.txt", w.OutputDirectory, taskID)
 	fmt.Printf("writing to %v\n", outFile)
-	c_utils.WriteMapResults(results, outFile)
+	paritions, _ := c_utils.WriteMapResults(results, w.OutputDirectory, taskID)
 	// notify master about this next
 
 	// fmt.Print(w.Client, w.ID, taskID, true)
-	CompleteTask(w.Client, w.ID, taskID, true, outFile)
+	CompleteTask(w.Client, w.ID, taskID, true, paritions)
 }
 
 // SendTask(context.Context, *TaskDescription) (*Empty, error)

@@ -69,7 +69,7 @@ func (s *Server) CloseAllConnections() {
 // CompleteTask(context.Context, *TaskStatus) (*Empty, error)
 
 func (s *Server) CompleteTask(ctx context.Context, req *mpb.TaskStatus) (*mpb.Empty, error) {
-	fmt.Printf("Task %v completd by worker %v saved on location: %v\n", req.TaskId, req.WorkerId, req.OutputPath)
+	fmt.Printf("Task %v completd by worker %v saved on partitions: %v\n", req.TaskId, req.WorkerId, req.Partitions)
 	s.Mu.Lock()
 	workerID := GetWorkerID(req.WorkerId)
 	if req.Status {

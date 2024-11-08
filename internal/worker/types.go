@@ -19,6 +19,7 @@ type Server struct {
 // information about the worker
 type WorkerMachine struct {
 	MasterAddr      string
+	WorkerType      int                     // mapper/reducer
 	ID              string                  // port number
 	OutputDirectory string                  // store results of task
 	Client          mpb.MasterServiceClient // to communicate with master machine
