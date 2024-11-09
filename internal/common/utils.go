@@ -87,13 +87,13 @@ func WriteMapResults(kvPairs []KeyValue, outputDirectory string, taskID int) ([]
 }
 
 // do we sort?
-func GetPartitionData(directory string) []KeyValue {
-	var kvList []KeyValue
+func GetPartitionData(directory string) map[string][]int {
+	kvMap := make(map[string][]int)
 
 	files, err := os.ReadDir(directory)
 	if err != nil {
 		log.Printf("Error reading directory %s: %v", directory, err)
-		return kvList
+		return kvMap
 	}
 
 	for _, file := range files {
@@ -124,13 +124,9 @@ func GetPartitionData(directory string) []KeyValue {
 				continue
 			}
 
-			kv := KeyValue{
-				Key:   parts[0],
-				Value: value,
-			}
-			kvList = append(kvList, kv)
+			kvMap[parts[0]] = append(kvMap[parts[0]], value)
 		}
 	}
 
-	return kvList
+	return kvMap
 }

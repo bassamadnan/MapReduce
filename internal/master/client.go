@@ -100,8 +100,8 @@ func SendReducerTask(client wpb.WorkerServiceClient, addr []string, partition in
 	defer cancel()
 
 	_, err := client.SendReduceTask(ctx, &wpb.ReduceTaskDescription{
-		Addr:       addr,
-		Partitions: int32(partition),
+		Addr:      addr,
+		Partition: int32(partition),
 	})
 	if err != nil {
 		fmt.Printf("error in  send reduce task %v to client %v\n", err, client)

@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"log"
-	c_utils "mapreduce/internal/common"
 	mpb "mapreduce/pkg/proto/master"
 	wpb "mapreduce/pkg/proto/worker"
 	"time"
@@ -30,32 +29,36 @@ func CompleteTask(client mpb.MasterServiceClient, worker_id string, task_id int,
 }
 
 func ExecuteReduceTask(partition int, addr string) {
-	opts := []grpc.DialOption{grpc.WithTransportCredentials(insecure.NewCredentials())}
-	conn, err := grpc.NewClient(addr, opts...)
-	if err != nil {
-		log.Fatalf("conn failed %v", err)
-	}
-	defer conn.Close()
+    opts := []grpc.DialOption{grpc.WithTransportCredentials(insecure.NewCredentials())}
+    conn, err := grpc.NewClient(addr, opts...)
+    if err != nil {
+        log.Fatalf("conn failed %v", err)
+    }
+    defer conn.Close()
 
-	client := wpb.NewWorkerServiceClient(conn)
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
+    client := wpb.NewWorkerServiceClient(conn)
+    ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+    defer cancel()
 
-	resp, err := client.GetPartitionData(ctx, &wpb.Partition{Partition: int32(partition)})
-	if err != nil {
-		log.Fatalf("Error in get partition data client %v\n", err)
-	}
+    resp, err := client.GetPartitionData(ctx, &wpb.Partition{Partition: int32(partition)})
+    if err != nil {
+        log.Fatalf("Error in get partition data client %v\n", err)
+    }
 
-	var kvList []c_utils.KeyValue
-	for _, kv := range resp.Kv {
-		kvList = append(kvList, c_utils.KeyValue{
-			Key:   kv.Key,
-			Value: int(kv.Value),
-		})
-	}
+    dataMap := make(map[string][]int)
+    for _, kv := range resp.Kv {
+        values := make([]int, len(kv.Value))
+        for i, v := range kv.Value {
+            values[i] = int(v)
+        }
+        dataMap[kv.Key] = values
+    }
 
-	reducedData := c_utils.Reduce(kvList)
-	for _, kv := range reducedData {
-		fmt.Printf("%s %d\n", kv.Key, kv.Value)
-	}
+    for key, values := range dataMap {
+        sum := 0
+        for _, v := range values {
+            sum += v
+        }
+        fmt.Printf("%s %d\n", key, sum)
+    }
 }
