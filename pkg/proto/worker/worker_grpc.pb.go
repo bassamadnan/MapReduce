@@ -19,9 +19,10 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	WorkerService_SendMapTask_FullMethodName    = "/w_mapreduce.WorkerService/SendMapTask"
-	WorkerService_Ping_FullMethodName           = "/w_mapreduce.WorkerService/Ping"
-	WorkerService_SendReduceTask_FullMethodName = "/w_mapreduce.WorkerService/SendReduceTask"
+	WorkerService_SendMapTask_FullMethodName      = "/w_mapreduce.WorkerService/SendMapTask"
+	WorkerService_Ping_FullMethodName             = "/w_mapreduce.WorkerService/Ping"
+	WorkerService_SendReduceTask_FullMethodName   = "/w_mapreduce.WorkerService/SendReduceTask"
+	WorkerService_GetPartitionData_FullMethodName = "/w_mapreduce.WorkerService/GetPartitionData"
 )
 
 // WorkerServiceClient is the client API for WorkerService service.
@@ -31,6 +32,7 @@ type WorkerServiceClient interface {
 	SendMapTask(ctx context.Context, in *TaskDescription, opts ...grpc.CallOption) (*Empty, error)
 	Ping(ctx context.Context, in *PingRequest, opts ...grpc.CallOption) (*PingResponse, error)
 	SendReduceTask(ctx context.Context, in *ReduceTaskDescription, opts ...grpc.CallOption) (*Empty, error)
+	GetPartitionData(ctx context.Context, in *Partition, opts ...grpc.CallOption) (*Data, error)
 }
 
 type workerServiceClient struct {
@@ -71,6 +73,16 @@ func (c *workerServiceClient) SendReduceTask(ctx context.Context, in *ReduceTask
 	return out, nil
 }
 
+func (c *workerServiceClient) GetPartitionData(ctx context.Context, in *Partition, opts ...grpc.CallOption) (*Data, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(Data)
+	err := c.cc.Invoke(ctx, WorkerService_GetPartitionData_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // WorkerServiceServer is the server API for WorkerService service.
 // All implementations must embed UnimplementedWorkerServiceServer
 // for forward compatibility.
@@ -78,6 +90,7 @@ type WorkerServiceServer interface {
 	SendMapTask(context.Context, *TaskDescription) (*Empty, error)
 	Ping(context.Context, *PingRequest) (*PingResponse, error)
 	SendReduceTask(context.Context, *ReduceTaskDescription) (*Empty, error)
+	GetPartitionData(context.Context, *Partition) (*Data, error)
 	mustEmbedUnimplementedWorkerServiceServer()
 }
 
@@ -96,6 +109,9 @@ func (UnimplementedWorkerServiceServer) Ping(context.Context, *PingRequest) (*Pi
 }
 func (UnimplementedWorkerServiceServer) SendReduceTask(context.Context, *ReduceTaskDescription) (*Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method SendReduceTask not implemented")
+}
+func (UnimplementedWorkerServiceServer) GetPartitionData(context.Context, *Partition) (*Data, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetPartitionData not implemented")
 }
 func (UnimplementedWorkerServiceServer) mustEmbedUnimplementedWorkerServiceServer() {}
 func (UnimplementedWorkerServiceServer) testEmbeddedByValue()                       {}
@@ -172,6 +188,24 @@ func _WorkerService_SendReduceTask_Handler(srv interface{}, ctx context.Context,
 	return interceptor(ctx, in, info, handler)
 }
 
+func _WorkerService_GetPartitionData_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(Partition)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(WorkerServiceServer).GetPartitionData(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: WorkerService_GetPartitionData_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(WorkerServiceServer).GetPartitionData(ctx, req.(*Partition))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // WorkerService_ServiceDesc is the grpc.ServiceDesc for WorkerService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -190,6 +224,10 @@ var WorkerService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "SendReduceTask",
 			Handler:    _WorkerService_SendReduceTask_Handler,
+		},
+		{
+			MethodName: "GetPartitionData",
+			Handler:    _WorkerService_GetPartitionData_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

@@ -5,6 +5,9 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"path/filepath"
+	"strconv"
+	"strings"
 )
 
 func GetPartition(key string) int {
@@ -81,4 +84,53 @@ func WriteMapResults(kvPairs []KeyValue, outputDirectory string, taskID int) ([]
 	}
 
 	return result, nil
+}
+
+// do we sort?
+func GetPartitionData(directory string) []KeyValue {
+	var kvList []KeyValue
+
+	files, err := os.ReadDir(directory)
+	if err != nil {
+		log.Printf("Error reading directory %s: %v", directory, err)
+		return kvList
+	}
+
+	for _, file := range files {
+		if file.IsDir() || !strings.HasSuffix(strings.ToLower(file.Name()), ".txt") {
+			continue
+		}
+
+		data, err := os.ReadFile(filepath.Join(directory, file.Name()))
+		if err != nil {
+			log.Printf("Error reading file %s: %v", file.Name(), err)
+			continue
+		}
+
+		lines := strings.Split(string(data), "\n")
+		for _, line := range lines {
+			line = strings.TrimSpace(line)
+			if line == "" {
+				continue
+			}
+
+			parts := strings.Fields(line)
+			if len(parts) != 2 {
+				continue
+			}
+
+			value, err := strconv.Atoi(parts[1])
+			if err != nil {
+				continue
+			}
+
+			kv := KeyValue{
+				Key:   parts[0],
+				Value: value,
+			}
+			kvList = append(kvList, kv)
+		}
+	}
+
+	return kvList
 }

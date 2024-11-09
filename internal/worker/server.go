@@ -40,5 +40,23 @@ func (s *Server) Ping(ctx context.Context, req *wpb.PingRequest) (*wpb.PingRespo
 
 func (s *Server) SendReduceTask(ctx context.Context, req *wpb.ReduceTaskDescription) (*wpb.Empty, error) {
 	fmt.Printf("Recived partition:%v from addresses:%v\n", req.Partitions, req.Addr)
+	for _, addr := range req.Addr {
+		go ExecuteReduceTask(int(req.Partitions), addr)
+	}
 	return &wpb.Empty{}, nil
+}
+
+func (s *Server) GetPartitionData(ctx context.Context, req *wpb.Partition) (*wpb.Data, error) {
+	directory := fmt.Sprintf("%v/%v", s.WorkerMachineInstance.OutputDirectory, req.Partition)
+	data := c_utils.GetPartitionData(directory)
+	grpcData := make([]*wpb.KeyValue, 0, len(data))
+	for _, rdata := range data {
+		grpcData = append(grpcData, &wpb.KeyValue{
+			Key:   rdata.Key,
+			Value: int32(rdata.Value),
+		})
+	}
+	return &wpb.Data{
+		Kv: grpcData,
+	}, nil
 }

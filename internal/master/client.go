@@ -110,24 +110,46 @@ func SendReducerTask(client wpb.WorkerServiceClient, addr []string, partition in
 	return nil
 }
 
+/*
+Tasks contain a map string, partitions
+string -> localhost address of map worker machine
+partition -> list of numbers
+
+We have to assign reduce worker machine tasks now,
+*/
 func (s *Server) AssignReducerTasks() {
 	s.Mu.Lock()
 	defer s.Mu.Unlock()
-	reducerInputs := make(map[int][]string)
+	reducerInputs := make(map[int]map[string]bool)
 
 	for _, task := range s.Tasks {
 		for addr, partitions := range task.OutputPartitions {
 			for _, partition := range partitions {
-				reducerInputs[partition] = append(reducerInputs[partition], addr)
+				if reducerInputs[partition] == nil {
+					reducerInputs[partition] = make(map[string]bool)
+				}
+				reducerInputs[partition][addr] = true
 			}
 		}
+	}
+
+	reducerLists := make(map[int][]string)
+	for partition, addrSet := range reducerInputs {
+		addrs := make([]string, 0, len(addrSet))
+		for addr := range addrSet {
+			addrs = append(addrs, addr)
+		}
+		reducerLists[partition] = addrs
+	}
+	for partition, addr := range reducerLists {
+		fmt.Print(partition, addr)
 	}
 	partition := 0
 	for i, worker := range s.Workers {
 		if s.Workers[i].Status != IDLE || s.Workers[i].WorkerType != REDUCER {
 			continue
 		}
-		SendReducerTask(worker.Client, reducerInputs[partition], partition)
+		SendReducerTask(worker.Client, reducerLists[partition], partition)
 		partition++
 	}
 }
