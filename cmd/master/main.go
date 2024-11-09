@@ -79,8 +79,8 @@ func main() {
 			break
 		}
 	}
-	// shuffle sort phase
-	print("starting shuffle sort...")
+	// assigning reduce tasks
+	masterServer.AssignReducerTasks()
 	// exit program
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, os.Interrupt, syscall.SIGTERM)

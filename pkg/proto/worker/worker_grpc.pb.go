@@ -19,16 +19,18 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	WorkerService_SendTask_FullMethodName = "/w_mapreduce.WorkerService/SendTask"
-	WorkerService_Ping_FullMethodName     = "/w_mapreduce.WorkerService/Ping"
+	WorkerService_SendMapTask_FullMethodName    = "/w_mapreduce.WorkerService/SendMapTask"
+	WorkerService_Ping_FullMethodName           = "/w_mapreduce.WorkerService/Ping"
+	WorkerService_SendReduceTask_FullMethodName = "/w_mapreduce.WorkerService/SendReduceTask"
 )
 
 // WorkerServiceClient is the client API for WorkerService service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type WorkerServiceClient interface {
-	SendTask(ctx context.Context, in *TaskDescription, opts ...grpc.CallOption) (*Empty, error)
+	SendMapTask(ctx context.Context, in *TaskDescription, opts ...grpc.CallOption) (*Empty, error)
 	Ping(ctx context.Context, in *PingRequest, opts ...grpc.CallOption) (*PingResponse, error)
+	SendReduceTask(ctx context.Context, in *ReduceTaskDescription, opts ...grpc.CallOption) (*Empty, error)
 }
 
 type workerServiceClient struct {
@@ -39,10 +41,10 @@ func NewWorkerServiceClient(cc grpc.ClientConnInterface) WorkerServiceClient {
 	return &workerServiceClient{cc}
 }
 
-func (c *workerServiceClient) SendTask(ctx context.Context, in *TaskDescription, opts ...grpc.CallOption) (*Empty, error) {
+func (c *workerServiceClient) SendMapTask(ctx context.Context, in *TaskDescription, opts ...grpc.CallOption) (*Empty, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(Empty)
-	err := c.cc.Invoke(ctx, WorkerService_SendTask_FullMethodName, in, out, cOpts...)
+	err := c.cc.Invoke(ctx, WorkerService_SendMapTask_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -59,12 +61,23 @@ func (c *workerServiceClient) Ping(ctx context.Context, in *PingRequest, opts ..
 	return out, nil
 }
 
+func (c *workerServiceClient) SendReduceTask(ctx context.Context, in *ReduceTaskDescription, opts ...grpc.CallOption) (*Empty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(Empty)
+	err := c.cc.Invoke(ctx, WorkerService_SendReduceTask_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // WorkerServiceServer is the server API for WorkerService service.
 // All implementations must embed UnimplementedWorkerServiceServer
 // for forward compatibility.
 type WorkerServiceServer interface {
-	SendTask(context.Context, *TaskDescription) (*Empty, error)
+	SendMapTask(context.Context, *TaskDescription) (*Empty, error)
 	Ping(context.Context, *PingRequest) (*PingResponse, error)
+	SendReduceTask(context.Context, *ReduceTaskDescription) (*Empty, error)
 	mustEmbedUnimplementedWorkerServiceServer()
 }
 
@@ -75,11 +88,14 @@ type WorkerServiceServer interface {
 // pointer dereference when methods are called.
 type UnimplementedWorkerServiceServer struct{}
 
-func (UnimplementedWorkerServiceServer) SendTask(context.Context, *TaskDescription) (*Empty, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method SendTask not implemented")
+func (UnimplementedWorkerServiceServer) SendMapTask(context.Context, *TaskDescription) (*Empty, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method SendMapTask not implemented")
 }
 func (UnimplementedWorkerServiceServer) Ping(context.Context, *PingRequest) (*PingResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Ping not implemented")
+}
+func (UnimplementedWorkerServiceServer) SendReduceTask(context.Context, *ReduceTaskDescription) (*Empty, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method SendReduceTask not implemented")
 }
 func (UnimplementedWorkerServiceServer) mustEmbedUnimplementedWorkerServiceServer() {}
 func (UnimplementedWorkerServiceServer) testEmbeddedByValue()                       {}
@@ -102,20 +118,20 @@ func RegisterWorkerServiceServer(s grpc.ServiceRegistrar, srv WorkerServiceServe
 	s.RegisterService(&WorkerService_ServiceDesc, srv)
 }
 
-func _WorkerService_SendTask_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _WorkerService_SendMapTask_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(TaskDescription)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(WorkerServiceServer).SendTask(ctx, in)
+		return srv.(WorkerServiceServer).SendMapTask(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: WorkerService_SendTask_FullMethodName,
+		FullMethod: WorkerService_SendMapTask_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(WorkerServiceServer).SendTask(ctx, req.(*TaskDescription))
+		return srv.(WorkerServiceServer).SendMapTask(ctx, req.(*TaskDescription))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -138,6 +154,24 @@ func _WorkerService_Ping_Handler(srv interface{}, ctx context.Context, dec func(
 	return interceptor(ctx, in, info, handler)
 }
 
+func _WorkerService_SendReduceTask_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ReduceTaskDescription)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(WorkerServiceServer).SendReduceTask(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: WorkerService_SendReduceTask_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(WorkerServiceServer).SendReduceTask(ctx, req.(*ReduceTaskDescription))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // WorkerService_ServiceDesc is the grpc.ServiceDesc for WorkerService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -146,12 +180,16 @@ var WorkerService_ServiceDesc = grpc.ServiceDesc{
 	HandlerType: (*WorkerServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
-			MethodName: "SendTask",
-			Handler:    _WorkerService_SendTask_Handler,
+			MethodName: "SendMapTask",
+			Handler:    _WorkerService_SendMapTask_Handler,
 		},
 		{
 			MethodName: "Ping",
 			Handler:    _WorkerService_Ping_Handler,
+		},
+		{
+			MethodName: "SendReduceTask",
+			Handler:    _WorkerService_SendReduceTask_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

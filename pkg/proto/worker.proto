@@ -3,8 +3,9 @@ package w_mapreduce;
 option go_package="pkg/proto/worker;wpb"; // worker protobuf
 
 service WorkerService{
-    rpc SendTask(TaskDescription) returns (Empty) {}
+    rpc SendMapTask(TaskDescription) returns (Empty) {}
     rpc Ping(PingRequest) returns (PingResponse) {}
+    rpc SendReduceTask(ReduceTaskDescription) returns (Empty) {}
 }
 
 message Empty {}
@@ -21,4 +22,9 @@ message PingRequest{
 
 message PingResponse{
     bool status = 1;
+}
+
+message ReduceTaskDescription{
+    repeated string addr = 1;
+    int32 partitions = 2;
 }

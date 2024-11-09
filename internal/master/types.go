@@ -58,10 +58,10 @@ type Job struct {
 
 // tasks, do we need client here?
 type Task struct {
-	TaskID         int
-	Start          int // start of the input file line no
-	End            int // end of the input file line no
-	TaskType       int
-	TaskStatus     int
-	OutputLocation string // destination of the  output after its completed
+	TaskID           int
+	Start            int // start of the input file line no
+	End              int // end of the input file line no
+	TaskType         int
+	TaskStatus       int
+	OutputPartitions map[string][]int // destination of all the partitions  output after its completed
 }

@@ -71,11 +71,19 @@ func (s *Server) CloseAllConnections() {
 func (s *Server) CompleteTask(ctx context.Context, req *mpb.TaskStatus) (*mpb.Empty, error) {
 	fmt.Printf("Task %v completd by worker %v saved on partitions: %v\n", req.TaskId, req.WorkerId, req.Partitions)
 	s.Mu.Lock()
+	partitions := make([]int, 0, len(req.Partitions))
+	for _, p := range req.Partitions {
+		partitions = append(partitions, int(p))
+	}
 	workerID := GetWorkerID(req.WorkerId)
 	if req.Status {
 		s.Workers[workerID].Status = IDLE
 		s.Workers[workerID].AssignedTask = -1
 		s.Tasks[req.TaskId].TaskStatus = COMPLETED
+		if s.Tasks[req.TaskId].OutputPartitions == nil {
+			s.Tasks[req.TaskId].OutputPartitions = make(map[string][]int)
+		}
+		s.Tasks[req.TaskId].OutputPartitions[fmt.Sprintf("localhost:%v", req.WorkerId)] = partitions
 	} else {
 		s.Workers[workerID].Status = FAIL
 		s.Workers[workerID].AssignedTask = -1

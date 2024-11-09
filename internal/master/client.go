@@ -8,10 +8,10 @@ import (
 	"time"
 )
 
-func SendTask(client wpb.WorkerServiceClient, task *Task) error {
+func SendMapTask(client wpb.WorkerServiceClient, task *Task) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
-	_, err := client.SendTask(ctx, &wpb.TaskDescription{
+	_, err := client.SendMapTask(ctx, &wpb.TaskDescription{
 		Start:  int32(task.Start),
 		End:    int32(task.End),
 		TaskID: int32(task.TaskID),
@@ -35,7 +35,7 @@ func (s *Server) AssignMapTasks() {
 			fmt.Print("all tasks over\n")
 			return
 		}
-		err := SendTask(worker.Client, task)
+		err := SendMapTask(worker.Client, task)
 		if err != nil {
 			s.Workers[i].Status = FAIL
 			s.Tasks[task.TaskID].TaskStatus = PENDING
@@ -92,5 +92,42 @@ func (s *Server) StartPing() {
 
 		wg.Wait()
 		<-ticker.C
+	}
+}
+
+func SendReducerTask(client wpb.WorkerServiceClient, addr []string, partition int) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	_, err := client.SendReduceTask(ctx, &wpb.ReduceTaskDescription{
+		Addr:       addr,
+		Partitions: int32(partition),
+	})
+	if err != nil {
+		fmt.Printf("error in  send reduce task %v to client %v\n", err, client)
+		return err
+	}
+	return nil
+}
+
+func (s *Server) AssignReducerTasks() {
+	s.Mu.Lock()
+	defer s.Mu.Unlock()
+	reducerInputs := make(map[int][]string)
+
+	for _, task := range s.Tasks {
+		for addr, partitions := range task.OutputPartitions {
+			for _, partition := range partitions {
+				reducerInputs[partition] = append(reducerInputs[partition], addr)
+			}
+		}
+	}
+	partition := 0
+	for i, worker := range s.Workers {
+		if s.Workers[i].Status != IDLE || s.Workers[i].WorkerType != REDUCER {
+			continue
+		}
+		SendReducerTask(worker.Client, reducerInputs[partition], partition)
+		partition++
 	}
 }

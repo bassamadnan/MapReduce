@@ -22,7 +22,7 @@ func (w *WorkerMachine) execTask(start int, end int, taskID int, filePath string
 }
 
 // SendTask(context.Context, *TaskDescription) (*Empty, error)
-func (s *Server) SendTask(ctx context.Context, task *wpb.TaskDescription) (*wpb.Empty, error) {
+func (s *Server) SendMapTask(ctx context.Context, task *wpb.TaskDescription) (*wpb.Empty, error) {
 	start, end, taskid := task.Start, task.End, task.TaskID
 	fmt.Printf("Recieved task start: %d, %d\n", start, end)
 	go s.WorkerMachineInstance.execTask(int(start), int(end), int(taskid), s.InputFile)
@@ -36,4 +36,9 @@ func (s *Server) Ping(ctx context.Context, req *wpb.PingRequest) (*wpb.PingRespo
 	return &wpb.PingResponse{
 		Status: true,
 	}, nil
+}
+
+func (s *Server) SendReduceTask(ctx context.Context, req *wpb.ReduceTaskDescription) (*wpb.Empty, error) {
+	fmt.Printf("Recived partition:%v from addresses:%v\n", req.Partitions, req.Addr)
+	return &wpb.Empty{}, nil
 }
