@@ -40,9 +40,7 @@ func (s *Server) Ping(ctx context.Context, req *wpb.PingRequest) (*wpb.PingRespo
 
 func (s *Server) SendReduceTask(ctx context.Context, req *wpb.ReduceTaskDescription) (*wpb.Empty, error) {
 	fmt.Printf("Recived partition:%v from addresses:%v\n", req.Partition, req.Addr)
-	for _, addr := range req.Addr {
-		go ExecuteReduceTask(int(req.Partition), addr)
-	}
+	go s.StartReduceTask(int(req.Partition), req.Addr)
 	return &wpb.Empty{}, nil
 }
 

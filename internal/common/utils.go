@@ -14,7 +14,7 @@ func GetPartition(key string) int {
 	if len(key) == 0 {
 		return 0
 	}
-	return int(key[0]) % 2 // num_reducers
+	return int(key[0]) % NUM_REDUCERS // num_reducers
 }
 
 func GetLines(start int, end int, filePath string) []string {

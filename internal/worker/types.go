@@ -14,6 +14,7 @@ type Server struct {
 	Mu                    sync.Mutex
 	InputFile             string // should this be here?
 	WorkerMachineInstance *WorkerMachine
+	ReduceResults         map[string]int
 }
 
 // information about the worker

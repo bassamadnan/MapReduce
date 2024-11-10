@@ -8,4 +8,5 @@ TODO:
 5. notify master of finished tasks after map (done)
 6. simulate failures
 7. handle failures for workers (done , not tested , point 6)
-8. change reduce function input from list of key value pair to key, list of value pair (involves changing how the mapper will send data)
+8. change reduce function input from list of key value pair to key, list of value pair (involves changing how the mapper will send data) (done)
+9. debug kernel case (done)

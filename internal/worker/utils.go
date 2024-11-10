@@ -19,6 +19,7 @@ func (w *WorkerMachine) Initialize(master_addr string, port string) {
 	w.ServerInstance = &Server{InputFile: "data/input/input_1.txt", WorkerMachineInstance: w}
 	w.OutputDirectory = outputPath
 	w.SetupWorkerMachine(w.MasterAddr)
+	w.ServerInstance.ReduceResults = make(map[string]int)
 }
 
 func (w *WorkerMachine) SetupWorkerMachine(master_addr string) {

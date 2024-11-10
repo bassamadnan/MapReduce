@@ -6,6 +6,7 @@ import (
 	"log"
 	mpb "mapreduce/pkg/proto/master"
 	wpb "mapreduce/pkg/proto/worker"
+	"sync"
 	"time"
 
 	"google.golang.org/grpc"
@@ -28,37 +29,55 @@ func CompleteTask(client mpb.MasterServiceClient, worker_id string, task_id int,
 	return nil
 }
 
-func ExecuteReduceTask(partition int, addr string) {
-    opts := []grpc.DialOption{grpc.WithTransportCredentials(insecure.NewCredentials())}
-    conn, err := grpc.NewClient(addr, opts...)
-    if err != nil {
-        log.Fatalf("conn failed %v", err)
-    }
-    defer conn.Close()
+func (s *Server) ExecuteReduceTask(partition int, addr string, wg *sync.WaitGroup) {
+	defer wg.Done()
+	opts := []grpc.DialOption{grpc.WithTransportCredentials(insecure.NewCredentials())}
+	conn, err := grpc.NewClient(addr, opts...)
+	if err != nil {
+		log.Fatalf("conn failed %v", err)
+	}
+	defer conn.Close()
 
-    client := wpb.NewWorkerServiceClient(conn)
-    ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-    defer cancel()
+	client := wpb.NewWorkerServiceClient(conn)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
 
-    resp, err := client.GetPartitionData(ctx, &wpb.Partition{Partition: int32(partition)})
-    if err != nil {
-        log.Fatalf("Error in get partition data client %v\n", err)
-    }
+	resp, err := client.GetPartitionData(ctx, &wpb.Partition{Partition: int32(partition)})
+	if err != nil {
+		log.Fatalf("Error in get partition data client %v\n", err)
+	}
 
-    dataMap := make(map[string][]int)
-    for _, kv := range resp.Kv {
-        values := make([]int, len(kv.Value))
-        for i, v := range kv.Value {
-            values[i] = int(v)
-        }
-        dataMap[kv.Key] = values
-    }
+	dataMap := make(map[string][]int)
+	for _, kv := range resp.Kv {
+		values := make([]int, len(kv.Value))
+		for i, v := range kv.Value {
+			values[i] = int(v)
+		}
+		dataMap[kv.Key] = values
+	}
 
-    for key, values := range dataMap {
-        sum := 0
-        for _, v := range values {
-            sum += v
-        }
-        fmt.Printf("%s %d\n", key, sum)
-    }
+	for key, values := range dataMap {
+		sum := 0
+		for _, v := range values {
+			sum += v
+		}
+		s.Mu.Lock()
+		s.ReduceResults[key] += sum
+		s.Mu.Unlock()
+	}
+}
+
+func (s *Server) StartReduceTask(partition int, addresses []string) {
+	var wg sync.WaitGroup
+	wg.Add(len(addresses))
+	for _, addr := range addresses {
+		go s.ExecuteReduceTask(partition, addr, &wg)
+	}
+	wg.Wait()
+	fmt.Println("All reduce tasks completed. Results:")
+	s.Mu.Lock()
+	for key, sum := range s.ReduceResults {
+		fmt.Printf("%s: %d\n", key, sum)
+	}
+	s.Mu.Unlock()
 }
