@@ -10,3 +10,16 @@ TODO:
 7. handle failures for workers (done , not tested , point 6)
 8. change reduce function input from list of key value pair to key, list of value pair (involves changing how the mapper will send data) (done)
 9. debug kernel case (done)
+
+## Instructions to run
+1. At seperate terminals run the workers
+
+```bash
+go run cmd/worker/main.go -port 707(0/1/2/3/)
+```
+2. Run the master
+
+```bash
+go run cmd/master/main.go
+```
+3. To generate new test cases, run `gen.py`
