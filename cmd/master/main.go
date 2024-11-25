@@ -41,13 +41,14 @@ func main() {
 		log.Fatalf("failed to listen: %v", err)
 	}
 	masterServer := &m_utils.Server{
-		NumWorkers:  NUM_WORKERS,
-		NumMappers:  NumMappers,
-		NumReducers: NumReducers,
-		NumVertices: len(adjList),
-		DSU:         utils.NewDSU(len(adjList)),
-		AdjList:     adjList,
-		MST:         make([]utils.Edge, 0),
+		NumWorkers:     NUM_WORKERS,
+		NumMappers:     NumMappers,
+		NumReducers:    NumReducers,
+		NumVertices:    len(adjList),
+		DSU:            utils.NewDSU(len(adjList)),
+		AdjList:        adjList,
+		MST:            make([]utils.Edge, 0),
+		ComponentEdges: make(map[int][]utils.Edge),
 	}
 	fmt.Println(masterServer.DSU.Parent)
 	s := grpc.NewServer()
@@ -100,6 +101,7 @@ func main() {
 	}
 	// assigning reduce tasks
 	masterServer.AssignReducerTasks()
+
 	// exit program
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, os.Interrupt, syscall.SIGTERM)

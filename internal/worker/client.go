@@ -40,6 +40,18 @@ func PingReady(client mpb.MasterServiceClient, worker_id string) (int, error) {
 	return int(numReducers.NumReducers), nil
 }
 
+func SendEdge(client mpb.MasterServiceClient, component int, edge utils.Edge) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second) // timeout for ping
+	defer cancel()
+	client.SendMinEdge(ctx, &mpb.EdgeInfo{
+		Component: int32(component),
+		U:         int32(edge.U),
+		V:         int32(edge.V),
+		W:         int32(edge.W),
+	})
+	return nil
+}
+
 func (s *Server) ExecuteReduceTask(partition int, addr string, wg *sync.WaitGroup) {
 	defer wg.Done()
 
@@ -95,8 +107,8 @@ func (s *Server) ExecuteReduceTask(partition int, addr string, wg *sync.WaitGrou
 	s.Mu.Lock()
 	fmt.Printf("\nCurrent minimum edges after processing partition %d from %s:\n", partition, addr)
 	for comp, edge := range s.MinOutgoingEdges {
-		fmt.Printf("Component %d: %d -> %d (weight: %d)\n",
-			comp, edge.U, edge.V, edge.W)
+		fmt.Printf("Component %d: %d -> %d (weight: %d)\n", comp, edge.U, edge.V, edge.W)
+		SendEdge(s.WorkerMachineInstance.Client, comp, edge)
 	}
 	s.Mu.Unlock()
 }

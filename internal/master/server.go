@@ -22,18 +22,21 @@ type WorkerInfo struct {
 // server side functions for grpc service of the master
 type Server struct {
 	mpb.UnimplementedMasterServiceServer
-	NumWorkers      int
-	NumWorkersReady int
-	NumVertices     int
-	NumMappers      int
-	NumReducers     int
-	Mu              sync.Mutex
-	Tasks           []Task             // list of tasks, to be cleared after map phase
-	ServiceRegistry []string           // list of all worker machine address (indxes for the map blow)
-	Workers         map[string]*Worker // worker[x] -> worker having id localhost:xxxx (xxxx : port number)
-	AdjList         map[int][]utils.Edge
-	MST             []utils.Edge
-	DSU             *utils.DisjointSetUnion
+	NumWorkers          int
+	NumWorkersReady     int
+	NumVertices         int
+	NumMappers          int
+	NumReducers         int
+	NumReducersResponse int
+	Mu                  sync.Mutex
+	Tasks               []Task             // list of tasks, to be cleared after map phase
+	ServiceRegistry     []string           // list of all worker machine address (indxes for the map blow)
+	Workers             map[string]*Worker // worker[x] -> worker having id localhost:xxxx (xxxx : port number)
+	AdjList             map[int][]utils.Edge
+	MST                 []utils.Edge
+	DSU                 *utils.DisjointSetUnion
+	ComponentEdges      map[int][]utils.Edge // map[componentID][]Edge - stores all edges received for each component
+
 }
 
 // function to initialize the worker list
@@ -108,4 +111,41 @@ func (s *Server) Ready(ctx context.Context, req *mpb.WorkerStatus) (*mpb.ReadyRe
 	s.Mu.Unlock()
 
 	return &mpb.ReadyResponse{NumReducers: int32(s.NumReducers)}, nil
+}
+
+func (s *Server) SendMinEdge(ctx context.Context, info *mpb.EdgeInfo) (*mpb.Empty, error) {
+	comp := int(info.Component)
+	edge := utils.Edge{U: int(info.U), V: int(info.V), W: int(info.W)}
+
+	s.Mu.Lock()
+	defer s.Mu.Unlock()
+	s.ComponentEdges[comp] = append(s.ComponentEdges[comp], edge)
+	s.NumReducersResponse++
+	return &mpb.Empty{}, nil
+}
+
+func (s *Server) ProcessMinEdges() {
+	s.Mu.Lock()
+	defer s.Mu.Unlock()
+
+	// for each component, find the minimum edge among all received edges
+	for comp, edges := range s.ComponentEdges {
+		if len(edges) == 0 {
+			continue
+		}
+
+		// Find minimum edge for this component
+		minEdge := edges[0]
+		for _, edge := range edges {
+			if edge.W < minEdge.W {
+				minEdge = edge
+			}
+		}
+
+		// Add to MST and merge components
+		s.MST = append(s.MST, minEdge)
+		s.DSU.Union(minEdge.U, minEdge.V)
+		fmt.Printf("Added MST edge for component %d: %d -> %d (weight: %d)\n",
+			comp, minEdge.U, minEdge.V, minEdge.W)
+	}
 }
