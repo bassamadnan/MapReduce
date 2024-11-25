@@ -301,9 +301,33 @@ func WriteMapResults(CompOutgoing map[int][]Edge, OutputDir string, TaskID int, 
 		}
 		defer File.Close()
 
+		// Use map to deduplicate edges for this component
+		type EdgeKey struct {
+			u, v int
+		}
+		uniqueEdges := make(map[EdgeKey]Edge)
 		for _, Edge := range Edges {
-			// Write as: componentID u v w
-			_, Err := fmt.Fprintf(File, "%d %d %d %d\n", Comp, Edge.U, Edge.V, Edge.W)
+			// Create canonical edge key (smaller vertex first)
+			u, v := Edge.U, Edge.V
+			if u > v {
+				u, v = v, u
+			}
+			key := EdgeKey{u: u, v: v}
+
+			// keep edge if we haven't seen it, or if it has lower weight
+			if existing, exists := uniqueEdges[key]; !exists || Edge.W < existing.W {
+				uniqueEdges[key] = Edge
+			}
+		}
+
+		// unique edges
+		for _, Edge := range uniqueEdges {
+			// Always write with smaller vertex ID first
+			u, v := Edge.U, Edge.V
+			if u > v {
+				u, v = v, u
+			}
+			_, Err := fmt.Fprintf(File, "%d %d %d %d\n", Comp, u, v, Edge.W)
 			if Err != nil {
 				return nil, Err
 			}
@@ -361,4 +385,17 @@ func ReadDirectoryEdges(directory string) (map[int][]Edge, error) {
 	}
 
 	return compEdges, nil
+}
+
+func GetComponents(dsu *DisjointSetUnion) []int {
+	componentSet := make(map[int]bool)
+	for i := range dsu.Parent {
+		componentSet[dsu.Find(i)] = true
+	}
+
+	components := make([]int, 0, len(componentSet))
+	for comp := range componentSet {
+		components = append(components, comp)
+	}
+	return components
 }

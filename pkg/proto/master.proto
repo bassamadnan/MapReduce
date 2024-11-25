@@ -6,6 +6,7 @@ service MasterService{
     rpc CompleteTask(TaskStatus) returns (Empty) {}
     rpc Ready(WorkerStatus) returns (ReadyResponse) {}
     rpc SendMinEdge(EdgeInfo) returns (Empty) {}
+    rpc Complete(Empty) returns (Empty) {}
 }
 
 message Empty {}

@@ -51,6 +51,12 @@ func SendEdge(client mpb.MasterServiceClient, component int, edge utils.Edge) er
 	})
 	return nil
 }
+func Complete(client mpb.MasterServiceClient) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second) // timeout for ping
+	defer cancel()
+	client.Complete(ctx, &mpb.Empty{})
+	return nil
+}
 
 func (s *Server) ExecuteReduceTask(partition int, addr string, wg *sync.WaitGroup) {
 	defer wg.Done()
@@ -110,6 +116,7 @@ func (s *Server) ExecuteReduceTask(partition int, addr string, wg *sync.WaitGrou
 		fmt.Printf("Component %d: %d -> %d (weight: %d)\n", comp, edge.U, edge.V, edge.W)
 		SendEdge(s.WorkerMachineInstance.Client, comp, edge)
 	}
+	Complete(s.WorkerMachineInstance.Client) // this reducer is done!
 	s.Mu.Unlock()
 }
 func (s *Server) StartReduceTask(partition int, addresses []string) {

@@ -31,8 +31,16 @@ const (
 	DEFAULT_SPLIT     = 7
 )
 
+func GetUniqueComponents(dsu *utils.DisjointSetUnion) int {
+	componentSet := make(map[int]bool)
+	for i := range dsu.Parent {
+		componentSet[dsu.Find(i)] = true
+	}
+	return len(componentSet)
+}
+
 func main() {
-	adjList, _ := utils.ReadMTXFile("data/input/19.mtx")
+	adjList, _ := utils.ReadMTXFile("data/input/sample.mtx")
 	utils.PrintAdjList(adjList)
 	NumMappers, NumReducers := 2, 2
 	// setup server
@@ -82,26 +90,73 @@ func main() {
 	}
 	masterServer.SetupWorkerClients(serviceRegistry)
 	go masterServer.StartPing() // start pinging the machines periodically on background
-
-	masterServer.Tasks = tasks
-	masterServer.AssignMapTasks()
-	// wait till all tasks are completed
 	for {
-		count := 0
-		masterServer.Mu.Lock()
-		for _, task := range masterServer.Tasks {
-			if task.TaskStatus == m_utils.COMPLETED {
-				count++
+		numComponents := GetUniqueComponents(masterServer.DSU)
+		if numComponents <= 1 {
+			sum := 0
+			fmt.Println("MST construction complete!")
+			fmt.Println("\nFinal MST edges:")
+
+			for _, edge := range masterServer.MST {
+				fmt.Printf("%d -> %d (weight: %d)\n", edge.U, edge.V, edge.W)
+				sum += edge.W
 			}
-		}
-		masterServer.Mu.Unlock()
-		if count == len(masterServer.Tasks) {
+			fmt.Printf("Final sum: %v\n", sum)
 			break
 		}
-	}
-	// assigning reduce tasks
-	masterServer.AssignReducerTasks()
+		components := utils.GetComponents(masterServer.DSU)
 
+		fmt.Printf("\nStarting new iteration with %d components\n", len(components))
+
+		// Divide components among mappers
+		WorkerComponents := utils.GetWorkerComponents(masterServer.DSU, masterServer.NumMappers)
+		for i, comp := range WorkerComponents {
+			fmt.Printf("Worker %d components: %v\n", i, comp)
+		}
+
+		// Create and assign map tasks
+		tasks, _ := m_utils.GetMapTasks(WorkerComponents)
+		masterServer.Tasks = tasks
+		masterServer.AssignMapTasks()
+
+		// Wait for map phase completion
+		for {
+			count := 0
+			masterServer.Mu.Lock()
+			for _, task := range masterServer.Tasks {
+				if task.TaskStatus == m_utils.COMPLETED {
+					count++
+				}
+			}
+			masterServer.Mu.Unlock()
+			if count == len(masterServer.Tasks) {
+				break
+			}
+		}
+
+		// Start reduce phase
+		masterServer.NumReducersResponse = 0                     // Reset counter
+		masterServer.ComponentEdges = make(map[int][]utils.Edge) // Clear previous edges
+		masterServer.AssignReducerTasks()
+
+		fmt.Println("WAITING FOR REDUCERS")
+		for {
+			masterServer.Mu.Lock()
+			if masterServer.NumReducersResponse == masterServer.NumReducers {
+				masterServer.Mu.Unlock()
+				break
+			}
+			masterServer.Mu.Unlock()
+		}
+		fmt.Println(" REDUCERS WAIT OVER")
+		// Process edges and update MST
+		masterServer.ProcessMinEdges()
+
+		fmt.Println("\nCurrent MST edges:")
+		for _, edge := range masterServer.MST {
+			fmt.Printf("%d -> %d (weight: %d)\n", edge.U, edge.V, edge.W)
+		}
+	}
 	// exit program
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, os.Interrupt, syscall.SIGTERM)

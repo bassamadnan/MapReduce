@@ -120,15 +120,31 @@ func (s *Server) SendMinEdge(ctx context.Context, info *mpb.EdgeInfo) (*mpb.Empt
 	s.Mu.Lock()
 	defer s.Mu.Unlock()
 	s.ComponentEdges[comp] = append(s.ComponentEdges[comp], edge)
-	s.NumReducersResponse++
+	// fmt.Println("Current responses: ", s.NumReducersResponse)
 	return &mpb.Empty{}, nil
 }
 
+func (s *Server) Complete(ctx context.Context, req *mpb.Empty) (*mpb.Empty, error) {
+	s.Mu.Lock()
+	s.NumReducersResponse++
+	s.Mu.Unlock()
+	return &mpb.Empty{}, nil
+}
 func (s *Server) ProcessMinEdges() {
 	s.Mu.Lock()
 	defer s.Mu.Unlock()
 
-	// for each component, find the minimum edge among all received edges
+	// Map to track already added edges (using both orientations)
+	edgeSet := make(map[string]bool)
+	for _, existingEdge := range s.MST {
+		// Add both orientations to prevent duplicates
+		edgeStr1 := fmt.Sprintf("%d-%d", existingEdge.U, existingEdge.V)
+		edgeStr2 := fmt.Sprintf("%d-%d", existingEdge.V, existingEdge.U)
+		edgeSet[edgeStr1] = true
+		edgeSet[edgeStr2] = true
+	}
+
+	// Process new edges
 	for comp, edges := range s.ComponentEdges {
 		if len(edges) == 0 {
 			continue
@@ -142,10 +158,29 @@ func (s *Server) ProcessMinEdges() {
 			}
 		}
 
-		// Add to MST and merge components
-		s.MST = append(s.MST, minEdge)
-		s.DSU.Union(minEdge.U, minEdge.V)
-		fmt.Printf("Added MST edge for component %d: %d -> %d (weight: %d)\n",
-			comp, minEdge.U, minEdge.V, minEdge.W)
+		// Check if we've already added this edge (in either orientation)
+		edgeStr1 := fmt.Sprintf("%d-%d", minEdge.U, minEdge.V)
+		edgeStr2 := fmt.Sprintf("%d-%d", minEdge.V, minEdge.U)
+
+		if !edgeSet[edgeStr1] && !edgeSet[edgeStr2] {
+			// Add edge to MST
+			s.MST = append(s.MST, minEdge)
+			// Mark edge as added
+			edgeSet[edgeStr1] = true
+			edgeSet[edgeStr2] = true
+			// Merge components
+			s.DSU.Union(minEdge.U, minEdge.V)
+			fmt.Printf("Added MST edge for component %d: %d -> %d (weight: %d)\n",
+				comp, minEdge.U, minEdge.V, minEdge.W)
+		}
+	}
+
+	// Clear for next iteration
+	s.ComponentEdges = make(map[int][]utils.Edge)
+
+	// Print current state
+	fmt.Println("\nCurrent MST edges:")
+	for _, edge := range s.MST {
+		fmt.Printf("%d -> %d (weight: %d)\n", edge.U, edge.V, edge.W)
 	}
 }

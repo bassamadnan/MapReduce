@@ -22,6 +22,7 @@ const (
 	MasterService_CompleteTask_FullMethodName = "/m_mapreduce.MasterService/CompleteTask"
 	MasterService_Ready_FullMethodName        = "/m_mapreduce.MasterService/Ready"
 	MasterService_SendMinEdge_FullMethodName  = "/m_mapreduce.MasterService/SendMinEdge"
+	MasterService_Complete_FullMethodName     = "/m_mapreduce.MasterService/Complete"
 )
 
 // MasterServiceClient is the client API for MasterService service.
@@ -31,6 +32,7 @@ type MasterServiceClient interface {
 	CompleteTask(ctx context.Context, in *TaskStatus, opts ...grpc.CallOption) (*Empty, error)
 	Ready(ctx context.Context, in *WorkerStatus, opts ...grpc.CallOption) (*ReadyResponse, error)
 	SendMinEdge(ctx context.Context, in *EdgeInfo, opts ...grpc.CallOption) (*Empty, error)
+	Complete(ctx context.Context, in *Empty, opts ...grpc.CallOption) (*Empty, error)
 }
 
 type masterServiceClient struct {
@@ -71,6 +73,16 @@ func (c *masterServiceClient) SendMinEdge(ctx context.Context, in *EdgeInfo, opt
 	return out, nil
 }
 
+func (c *masterServiceClient) Complete(ctx context.Context, in *Empty, opts ...grpc.CallOption) (*Empty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(Empty)
+	err := c.cc.Invoke(ctx, MasterService_Complete_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // MasterServiceServer is the server API for MasterService service.
 // All implementations must embed UnimplementedMasterServiceServer
 // for forward compatibility.
@@ -78,6 +90,7 @@ type MasterServiceServer interface {
 	CompleteTask(context.Context, *TaskStatus) (*Empty, error)
 	Ready(context.Context, *WorkerStatus) (*ReadyResponse, error)
 	SendMinEdge(context.Context, *EdgeInfo) (*Empty, error)
+	Complete(context.Context, *Empty) (*Empty, error)
 	mustEmbedUnimplementedMasterServiceServer()
 }
 
@@ -96,6 +109,9 @@ func (UnimplementedMasterServiceServer) Ready(context.Context, *WorkerStatus) (*
 }
 func (UnimplementedMasterServiceServer) SendMinEdge(context.Context, *EdgeInfo) (*Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method SendMinEdge not implemented")
+}
+func (UnimplementedMasterServiceServer) Complete(context.Context, *Empty) (*Empty, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Complete not implemented")
 }
 func (UnimplementedMasterServiceServer) mustEmbedUnimplementedMasterServiceServer() {}
 func (UnimplementedMasterServiceServer) testEmbeddedByValue()                       {}
@@ -172,6 +188,24 @@ func _MasterService_SendMinEdge_Handler(srv interface{}, ctx context.Context, de
 	return interceptor(ctx, in, info, handler)
 }
 
+func _MasterService_Complete_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(Empty)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MasterServiceServer).Complete(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: MasterService_Complete_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MasterServiceServer).Complete(ctx, req.(*Empty))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // MasterService_ServiceDesc is the grpc.ServiceDesc for MasterService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -190,6 +224,10 @@ var MasterService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "SendMinEdge",
 			Handler:    _MasterService_SendMinEdge_Handler,
+		},
+		{
+			MethodName: "Complete",
+			Handler:    _MasterService_Complete_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
