@@ -260,6 +260,21 @@ func GetComponentOutgoingEdges(WorkerComps []int, AdjList map[int][]Edge, Dsu *D
 			}
 		}
 	}
+	// remove duplicates
+	for Comp, edges := range CompOutgoing {
+		uniqueEdges := make(map[Edge]bool)
+		for _, edge := range edges {
+			uniqueEdges[edge] = true
+		}
+
+		uniqueEdgeList := make([]Edge, 0, len(uniqueEdges))
+		for edge := range uniqueEdges {
+			uniqueEdgeList = append(uniqueEdgeList, edge)
+		}
+
+		CompOutgoing[Comp] = uniqueEdgeList
+	}
+
 	return CompOutgoing
 }
 
@@ -304,43 +319,43 @@ func WriteMapResults(CompOutgoing map[int][]Edge, OutputDir string, TaskID int, 
 }
 
 func ReadDirectoryEdges(directory string) ([]Edge, error) {
-   files, err := os.ReadDir(directory)
-   if err != nil {
-       return nil, fmt.Errorf("error reading directory: %v", err)
-   }
+	files, err := os.ReadDir(directory)
+	if err != nil {
+		return nil, fmt.Errorf("error reading directory: %v", err)
+	}
 
-   var edges []Edge
-   for _, file := range files {
-       if file.IsDir() {
-           continue
-       }
+	var edges []Edge
+	for _, file := range files {
+		if file.IsDir() {
+			continue
+		}
 
-       filePath := filepath.Join(directory, file.Name())
-       file, err := os.Open(filePath)
-       if err != nil {
-           return nil, fmt.Errorf("error opening file %s: %v", filePath, err)
-       }
-       defer file.Close()
+		filePath := filepath.Join(directory, file.Name())
+		file, err := os.Open(filePath)
+		if err != nil {
+			return nil, fmt.Errorf("error opening file %s: %v", filePath, err)
+		}
+		defer file.Close()
 
-       scanner := bufio.NewScanner(file)
-       for scanner.Scan() {
-           line := scanner.Text()
-           fields := strings.Fields(line)
-           if len(fields) != 3 {
-               continue
-           }
+		scanner := bufio.NewScanner(file)
+		for scanner.Scan() {
+			line := scanner.Text()
+			fields := strings.Fields(line)
+			if len(fields) != 3 {
+				continue
+			}
 
-           u, err1 := strconv.Atoi(fields[0])
-           v, err2 := strconv.Atoi(fields[1])
-           w, err3 := strconv.Atoi(fields[2])
+			u, err1 := strconv.Atoi(fields[0])
+			v, err2 := strconv.Atoi(fields[1])
+			w, err3 := strconv.Atoi(fields[2])
 
-           if err1 != nil || err2 != nil || err3 != nil {
-               continue
-           }
+			if err1 != nil || err2 != nil || err3 != nil {
+				continue
+			}
 
-           edges = append(edges, Edge{u, v, w})
-       }
-   }
+			edges = append(edges, Edge{u, v, w})
+		}
+	}
 
-   return edges, nil
+	return edges, nil
 }
