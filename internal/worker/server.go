@@ -46,7 +46,7 @@ func (w *WorkerMachine) execTask(components []int32, dsuParent []int32, taskID i
 	// 		fmt.Printf("Edge: %d -> %d (weight: %d)\n", edge.U, edge.V, edge.W)
 	// 	}
 	// }
-	// CompleteTask(w.Client, w.ID, taskID, true, paritions)
+	CompleteTask(w.Client, w.ID, taskID, true, partitions)
 }
 
 // SendTask(context.Context, *TaskDescription) (*Empty, error)

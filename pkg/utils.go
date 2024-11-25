@@ -282,7 +282,7 @@ func GetPartitionID(ComponentID int, NumReducers int) int {
 	return ComponentID % NumReducers
 }
 
-func WriteMapResults(CompOutgoing map[int][]Edge, OutputDir string, TaskID int, NumReducers int) ([]string, error) {
+func WriteMapResults(CompOutgoing map[int][]Edge, OutputDir string, TaskID int, NumReducers int) ([]int, error) {
 	PartitionsUsed := make(map[int]bool)
 
 	for Comp, Edges := range CompOutgoing {
@@ -309,11 +309,11 @@ func WriteMapResults(CompOutgoing map[int][]Edge, OutputDir string, TaskID int, 
 		}
 	}
 
-	Partitions := make([]string, 0, len(PartitionsUsed))
+	Partitions := make([]int, 0, len(PartitionsUsed))
 	for P := range PartitionsUsed {
-		Partitions = append(Partitions, fmt.Sprintf("%d", P))
+		Partitions = append(Partitions, P)
 	}
-	sort.Strings(Partitions)
+	sort.Ints(Partitions)
 
 	return Partitions, nil
 }

@@ -5,7 +5,7 @@ func GetMapTasks(workerComponents [][]int) ([]Task, error) {
 	for i, components := range workerComponents {
 		tasks[i] = Task{
 			TaskID:     i,
-			Components: components, // You'll need to add this field to Task struct
+			Components: components,
 			TaskType:   MAP_TASK,
 			TaskStatus: PENDING,
 		}
