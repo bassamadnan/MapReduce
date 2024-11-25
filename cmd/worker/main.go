@@ -32,7 +32,7 @@ func main() {
 	}
 
 	w := w_utils.WorkerMachine{}
-	w.Initialize("localhost:5050", strconv.Itoa(*port))
+	w.Initialize("localhost:5050", strconv.Itoa(*port), "data/input/19.mtx")
 	s := grpc.NewServer()
 	wpb.RegisterWorkerServiceServer(s, w.ServerInstance)
 
