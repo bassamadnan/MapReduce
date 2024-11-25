@@ -16,6 +16,7 @@ type Server struct {
 	InputFile             string // should this be here?
 	WorkerMachineInstance *WorkerMachine
 	ReduceResults         map[string]int
+	MinOutgoingEdges      map[int]utils.Edge // for reducer
 }
 
 // information about the worker

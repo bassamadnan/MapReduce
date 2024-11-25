@@ -3,7 +3,6 @@ package w_utils
 import (
 	"context"
 	"fmt"
-	c_utils "mapreduce/internal/common"
 	utils "mapreduce/pkg"
 	wpb "mapreduce/pkg/proto/worker"
 )
@@ -78,22 +77,28 @@ func (s *Server) SendReduceTask(ctx context.Context, req *wpb.ReduceTaskDescript
 
 func (s *Server) GetPartitionData(ctx context.Context, req *wpb.Partition) (*wpb.Data, error) {
 	directory := fmt.Sprintf("%v/%v", s.WorkerMachineInstance.OutputDirectory, req.Partition)
-	dataMap := c_utils.GetPartitionData(directory)
+	compEdges, err := utils.ReadDirectoryEdges(directory)
+	if err != nil {
+		return nil, fmt.Errorf("error reading partition %d: %v", req.Partition, err)
+	}
 
-	grpcData := make([]*wpb.KeyValue, 0, len(dataMap))
-	for key, values := range dataMap {
-		valueList := make([]int32, len(values))
-		for i, v := range values {
-			valueList[i] = int32(v)
+	protoCompEdges := make([]*wpb.ComponentEdges, 0, len(compEdges))
+	for comp, edges := range compEdges {
+		protoEdges := make([]*wpb.Edge, len(edges))
+		for i, edge := range edges {
+			protoEdges[i] = &wpb.Edge{
+				U: int32(edge.U),
+				V: int32(edge.V),
+				W: int32(edge.W),
+			}
 		}
-		fmt.Printf("Gathered data- %v : %v\n", key, valueList)
-		grpcData = append(grpcData, &wpb.KeyValue{
-			Key:   key,
-			Value: valueList,
+		protoCompEdges = append(protoCompEdges, &wpb.ComponentEdges{
+			ComponentId: int32(comp),
+			Edges:       protoEdges,
 		})
 	}
 
 	return &wpb.Data{
-		Kv: grpcData,
+		CompEdges: protoCompEdges,
 	}, nil
 }

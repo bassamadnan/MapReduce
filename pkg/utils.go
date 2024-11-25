@@ -302,7 +302,8 @@ func WriteMapResults(CompOutgoing map[int][]Edge, OutputDir string, TaskID int, 
 		defer File.Close()
 
 		for _, Edge := range Edges {
-			_, Err := fmt.Fprintf(File, "%d %d %d\n", Edge.U, Edge.V, Edge.W)
+			// Write as: componentID u v w
+			_, Err := fmt.Fprintf(File, "%d %d %d %d\n", Comp, Edge.U, Edge.V, Edge.W)
 			if Err != nil {
 				return nil, Err
 			}
@@ -318,13 +319,13 @@ func WriteMapResults(CompOutgoing map[int][]Edge, OutputDir string, TaskID int, 
 	return Partitions, nil
 }
 
-func ReadDirectoryEdges(directory string) ([]Edge, error) {
+func ReadDirectoryEdges(directory string) (map[int][]Edge, error) {
 	files, err := os.ReadDir(directory)
 	if err != nil {
 		return nil, fmt.Errorf("error reading directory: %v", err)
 	}
 
-	var edges []Edge
+	compEdges := make(map[int][]Edge)
 	for _, file := range files {
 		if file.IsDir() {
 			continue
@@ -341,21 +342,23 @@ func ReadDirectoryEdges(directory string) ([]Edge, error) {
 		for scanner.Scan() {
 			line := scanner.Text()
 			fields := strings.Fields(line)
-			if len(fields) != 3 {
+			if len(fields) != 4 { // Now expecting 4 fields
 				continue
 			}
 
-			u, err1 := strconv.Atoi(fields[0])
-			v, err2 := strconv.Atoi(fields[1])
-			w, err3 := strconv.Atoi(fields[2])
+			comp, err1 := strconv.Atoi(fields[0])
+			u, err2 := strconv.Atoi(fields[1])
+			v, err3 := strconv.Atoi(fields[2])
+			w, err4 := strconv.Atoi(fields[3])
 
-			if err1 != nil || err2 != nil || err3 != nil {
+			if err1 != nil || err2 != nil || err3 != nil || err4 != nil {
 				continue
 			}
 
-			edges = append(edges, Edge{u, v, w})
+			edge := Edge{U: u, V: v, W: w}
+			compEdges[comp] = append(compEdges[comp], edge)
 		}
 	}
 
-	return edges, nil
+	return compEdges, nil
 }
