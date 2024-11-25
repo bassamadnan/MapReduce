@@ -34,6 +34,7 @@ const (
 func main() {
 	adjList, _ := utils.ReadMTXFile("data/input/19.mtx")
 	utils.PrintAdjList(adjList)
+	NumMappers, NumReducers := 2, 2
 	// setup server
 	lis, err := net.Listen("tcp", fmt.Sprintf(":%d", 5050))
 	if err != nil {
@@ -41,6 +42,8 @@ func main() {
 	}
 	masterServer := &m_utils.Server{
 		NumWorkers:  NUM_WORKERS,
+		NumMappers:  NumMappers,
+		NumReducers: NumReducers,
 		NumVertices: len(adjList),
 		DSU:         utils.NewDSU(len(adjList)),
 		AdjList:     adjList,
@@ -54,12 +57,13 @@ func main() {
 			log.Fatalf("failed to serve: %v", err)
 		}
 	}()
+
+	WorkerComponents := utils.GetWorkerComponents(masterServer.DSU, masterServer.NumMappers)
+	for i, comp := range WorkerComponents {
+		fmt.Printf("Worker %d components: %v\n", i, comp)
+	}
 	// create map tasks, done by a scheduler in the paper, out of scope for this project
-	tasks, _ := m_utils.GetMapTasks(&m_utils.Job{
-		InputFileName: "data/input/input_1.txt",
-		NumWorkers:    NUM_WORKERS,
-		Split:         DEFAULT_SPLIT,
-	})
+	tasks, _ := m_utils.GetMapTasks(WorkerComponents)
 	fmt.Printf(("%v\n"), tasks)
 	for {
 		if masterServer.NumWorkersReady == NUM_WORKERS {
@@ -76,8 +80,9 @@ func main() {
 		{Addr: "localhost:7073", Role: 1}, // reduce worker
 	}
 	masterServer.SetupWorkerClients(serviceRegistry)
-	masterServer.Tasks = tasks
 	go masterServer.StartPing() // start pinging the machines periodically on background
+
+	masterServer.Tasks = tasks
 	masterServer.AssignMapTasks()
 	// wait till all tasks are completed
 	for {

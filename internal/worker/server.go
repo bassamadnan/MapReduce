@@ -22,10 +22,13 @@ func (w *WorkerMachine) execTask(start int, end int, taskID int, filePath string
 }
 
 // SendTask(context.Context, *TaskDescription) (*Empty, error)
-func (s *Server) SendMapTask(ctx context.Context, task *wpb.TaskDescription) (*wpb.Empty, error) {
-	start, end, taskid := task.Start, task.End, task.TaskID
-	fmt.Printf("Recieved task start: %d, %d\n", start, end)
-	go s.WorkerMachineInstance.execTask(int(start), int(end), int(taskid), s.InputFile)
+func (s *Server) SendMapTask(ctx context.Context, task *wpb.MapTaskDescription) (*wpb.Empty, error) {
+	fmt.Printf("Received task ID: %d\n", task.TaskID)
+	fmt.Printf("Worker Components: %v\n", task.WorkerComponent)
+	fmt.Printf("DSU length: %d\n", len(task.DSU))
+
+	// go s.WorkerMachineInstance.execTask(task.WorkerComponent, task.DSU, int(task.TaskID))
+
 	return &wpb.Empty{}, nil
 }
 

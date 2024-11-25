@@ -63,5 +63,6 @@ type Task struct {
 	End              int // end of the input file line no
 	TaskType         int
 	TaskStatus       int
+	Components       []int            // list of components assigned to mapper
 	OutputPartitions map[string][]int // destination of all the partitions  output after its completed
 }

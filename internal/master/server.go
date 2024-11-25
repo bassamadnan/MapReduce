@@ -25,6 +25,8 @@ type Server struct {
 	NumWorkers      int
 	NumWorkersReady int
 	NumVertices     int
+	NumMappers      int
+	NumReducers     int
 	Mu              sync.Mutex
 	Tasks           []Task             // list of tasks, to be cleared after map phase
 	ServiceRegistry []string           // list of all worker machine address (indxes for the map blow)

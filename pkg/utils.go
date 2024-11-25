@@ -209,3 +209,59 @@ func PrintAdjList(adjList map[int][]Edge) {
 		fmt.Println()
 	}
 }
+
+func GetWorkerComponents(dsu *DisjointSetUnion, numWorkers int) [][]int {
+	componentSet := make(map[int]bool)
+	for _, parent := range dsu.Parent {
+		componentSet[dsu.Find(parent)] = true
+	}
+
+	components := make([]int, 0, len(componentSet))
+	for comp := range componentSet {
+		components = append(components, comp)
+	}
+	sort.Ints(components)
+
+	totalComponents := len(components)
+	workerComponents := make([][]int, numWorkers)
+	componentsPerWorker := totalComponents / numWorkers
+
+	for i := 0; i < numWorkers; i++ {
+		start := i * componentsPerWorker
+		end := start + componentsPerWorker
+		if i == numWorkers-1 {
+			end = totalComponents
+		}
+		workerComponents[i] = components[start:end]
+	}
+
+	return workerComponents
+}
+
+func GetComponentOutgoingEdges(workerComps []int, adjList map[int][]Edge, dsu *DisjointSetUnion) map[int][]Edge {
+	compSet := make(map[int]bool)
+	for _, comp := range workerComps {
+		compSet[comp] = true
+	}
+
+	compOutgoing := make(map[int][]Edge)
+	for comp := range compSet {
+		compOutgoing[comp] = make([]Edge, 0)
+	}
+
+	for u, edges := range adjList {
+		for _, edge := range edges {
+			v := edge.v
+			if dsu.Find(u) != dsu.Find(v) {
+				if compSet[dsu.Find(u)] {
+					compOutgoing[dsu.Find(u)] = append(compOutgoing[dsu.Find(u)], Edge{u, v, edge.w})
+				}
+				if compSet[dsu.Find(v)] {
+					compOutgoing[dsu.Find(v)] = append(compOutgoing[dsu.Find(v)], Edge{v, u, edge.w})
+				}
+			}
+		}
+	}
+
+	return compOutgoing
+}
