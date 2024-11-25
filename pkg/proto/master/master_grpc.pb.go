@@ -28,7 +28,7 @@ const (
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type MasterServiceClient interface {
 	CompleteTask(ctx context.Context, in *TaskStatus, opts ...grpc.CallOption) (*Empty, error)
-	Ready(ctx context.Context, in *WorkerStatus, opts ...grpc.CallOption) (*Empty, error)
+	Ready(ctx context.Context, in *WorkerStatus, opts ...grpc.CallOption) (*ReadyResponse, error)
 }
 
 type masterServiceClient struct {
@@ -49,9 +49,9 @@ func (c *masterServiceClient) CompleteTask(ctx context.Context, in *TaskStatus, 
 	return out, nil
 }
 
-func (c *masterServiceClient) Ready(ctx context.Context, in *WorkerStatus, opts ...grpc.CallOption) (*Empty, error) {
+func (c *masterServiceClient) Ready(ctx context.Context, in *WorkerStatus, opts ...grpc.CallOption) (*ReadyResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(Empty)
+	out := new(ReadyResponse)
 	err := c.cc.Invoke(ctx, MasterService_Ready_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
@@ -64,7 +64,7 @@ func (c *masterServiceClient) Ready(ctx context.Context, in *WorkerStatus, opts 
 // for forward compatibility.
 type MasterServiceServer interface {
 	CompleteTask(context.Context, *TaskStatus) (*Empty, error)
-	Ready(context.Context, *WorkerStatus) (*Empty, error)
+	Ready(context.Context, *WorkerStatus) (*ReadyResponse, error)
 	mustEmbedUnimplementedMasterServiceServer()
 }
 
@@ -78,7 +78,7 @@ type UnimplementedMasterServiceServer struct{}
 func (UnimplementedMasterServiceServer) CompleteTask(context.Context, *TaskStatus) (*Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method CompleteTask not implemented")
 }
-func (UnimplementedMasterServiceServer) Ready(context.Context, *WorkerStatus) (*Empty, error) {
+func (UnimplementedMasterServiceServer) Ready(context.Context, *WorkerStatus) (*ReadyResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Ready not implemented")
 }
 func (UnimplementedMasterServiceServer) mustEmbedUnimplementedMasterServiceServer() {}

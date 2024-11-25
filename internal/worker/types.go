@@ -22,6 +22,7 @@ type Server struct {
 type WorkerMachine struct {
 	MasterAddr      string
 	NumVertices     int
+	NumReducers     int                     // used for partition
 	WorkerType      int                     // mapper/reducer
 	ID              string                  // port number
 	OutputDirectory string                  // store results of task

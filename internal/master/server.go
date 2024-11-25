@@ -100,12 +100,12 @@ func (s *Server) CompleteTask(ctx context.Context, req *mpb.TaskStatus) (*mpb.Em
 	return &mpb.Empty{}, nil
 }
 
-func (s *Server) Ready(ctx context.Context, req *mpb.WorkerStatus) (*mpb.Empty, error) {
+func (s *Server) Ready(ctx context.Context, req *mpb.WorkerStatus) (*mpb.ReadyResponse, error) {
 	id := req.WorkerId
 	fmt.Printf("Worker wiht %v ready! \n", id)
 	s.Mu.Lock()
 	s.NumWorkersReady += 1
 	s.Mu.Unlock()
 
-	return nil, nil
+	return &mpb.ReadyResponse{NumReducers: int32(s.NumReducers)}, nil
 }

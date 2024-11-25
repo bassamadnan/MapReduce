@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math"
 	"os"
+	"path/filepath"
 	"sort"
 	"strconv"
 	"strings"
@@ -13,16 +14,16 @@ import (
 
 type DisjointSetUnion struct {
 	Parent []int
-	rank   []int
+	Rank   []int
 }
 
 func NewDSU(n int) *DisjointSetUnion {
 	Parent := make([]int, n)
-	rank := make([]int, n)
+	Rank := make([]int, n)
 	for i := range Parent {
 		Parent[i] = i
 	}
-	return &DisjointSetUnion{Parent, rank}
+	return &DisjointSetUnion{Parent, Rank}
 }
 
 func (dsu *DisjointSetUnion) Find(u int) int {
@@ -37,22 +38,21 @@ func (dsu *DisjointSetUnion) Union(u, v int) {
 	rootV := dsu.Find(v)
 
 	if rootU != rootV {
-		if dsu.rank[rootU] > dsu.rank[rootV] {
+		if dsu.Rank[rootU] > dsu.Rank[rootV] {
 			dsu.Parent[rootV] = rootU
-		} else if dsu.rank[rootU] < dsu.rank[rootV] {
+		} else if dsu.Rank[rootU] < dsu.Rank[rootV] {
 			dsu.Parent[rootU] = rootV
 		} else {
 			dsu.Parent[rootV] = rootU
-			dsu.rank[rootU]++
+			dsu.Rank[rootU]++
 		}
 	}
 }
 
 type Edge struct {
-	u, v, w int
+	U, V, W int
 }
 
-// everything starts from 0
 func ReadMTXFile(filename string) (map[int][]Edge, int) {
 	file, err := os.Open(filename)
 	if err != nil {
@@ -61,207 +61,286 @@ func ReadMTXFile(filename string) (map[int][]Edge, int) {
 	defer file.Close()
 
 	const (
-		numWorkers = 4
-		chunkSize  = 1000
+		NumWorkers = 4
+		ChunkSize  = 1000
 	)
 
 	type MTXLine struct {
-		u, v, w int
-		valid   bool
+		U, V, W int
+		Valid   bool
 	}
-	mappedLines := make(chan MTXLine, numWorkers*chunkSize)
-	done := make(chan bool)
+	MappedLines := make(chan MTXLine, NumWorkers*ChunkSize)
+	Done := make(chan bool)
 
-	var chunks [][]string
-	var currentChunk []string
-	scanner := bufio.NewScanner(file)
+	var Chunks [][]string
+	var CurrentChunk []string
+	Scanner := bufio.NewScanner(file)
 
-	for scanner.Scan() {
-		currentChunk = append(currentChunk, scanner.Text())
-		if len(currentChunk) == chunkSize {
-			chunks = append(chunks, currentChunk)
-			currentChunk = []string{}
+	for Scanner.Scan() {
+		CurrentChunk = append(CurrentChunk, Scanner.Text())
+		if len(CurrentChunk) == ChunkSize {
+			Chunks = append(Chunks, CurrentChunk)
+			CurrentChunk = []string{}
 		}
 	}
-	if len(currentChunk) > 0 {
-		chunks = append(chunks, currentChunk)
+	if len(CurrentChunk) > 0 {
+		Chunks = append(Chunks, CurrentChunk)
 	}
 
-	var wg sync.WaitGroup
-	for _, chunk := range chunks {
-		wg.Add(1)
-		go func(lines []string) {
-			defer wg.Done()
-			for _, line := range lines {
-				if strings.HasPrefix(line, "%") || len(strings.TrimSpace(line)) == 0 {
+	var Wg sync.WaitGroup
+	for _, Chunk := range Chunks {
+		Wg.Add(1)
+		go func(Lines []string) {
+			defer Wg.Done()
+			for _, Line := range Lines {
+				if strings.HasPrefix(Line, "%") || len(strings.TrimSpace(Line)) == 0 {
 					continue
 				}
 
-				fields := strings.Fields(line)
-				if len(fields) != 3 {
+				Fields := strings.Fields(Line)
+				if len(Fields) != 3 {
 					continue
 				}
 
-				u, err1 := strconv.Atoi(fields[0])
-				v, err2 := strconv.Atoi(fields[1])
-				w, err3 := strconv.Atoi(fields[2])
-				if w < 0 {
-					w = -w
+				U, Err1 := strconv.Atoi(Fields[0])
+				V, Err2 := strconv.Atoi(Fields[1])
+				W, Err3 := strconv.Atoi(Fields[2])
+				if W < 0 {
+					W = -W
 				}
 
-				if err1 == nil && err2 == nil && err3 == nil {
-					mappedLines <- MTXLine{u, v, w, true}
+				if Err1 == nil && Err2 == nil && Err3 == nil {
+					MappedLines <- MTXLine{U, V, W, true}
 				}
 
-				if err1 == nil && err2 == nil && err3 == nil {
-					mappedLines <- MTXLine{v, u, w, true}
+				if Err1 == nil && Err2 == nil && Err3 == nil {
+					MappedLines <- MTXLine{V, U, W, true}
 				}
 			}
-		}(chunk)
+		}(Chunk)
 	}
 
-	adjList := make(map[int][]Edge)
-	maxVertex := 0
-	minVertex := math.MaxInt32
-	var mu sync.Mutex
+	AdjList := make(map[int][]Edge)
+	MaxVertex := 0
+	MinVertex := math.MaxInt32
+	var Mu sync.Mutex
 
 	go func() {
-		for line := range mappedLines {
-			if !line.valid {
+		for Line := range MappedLines {
+			if !Line.Valid {
 				continue
 			}
 
-			mu.Lock()
-			// Track minimum and maximum vertex numbers
-			if line.u < minVertex {
-				minVertex = line.u
+			Mu.Lock()
+			if Line.U < MinVertex {
+				MinVertex = Line.U
 			}
-			if line.v < minVertex {
-				minVertex = line.v
+			if Line.V < MinVertex {
+				MinVertex = Line.V
 			}
-			if line.u > maxVertex {
-				maxVertex = line.u
+			if Line.U > MaxVertex {
+				MaxVertex = Line.U
 			}
-			if line.v > maxVertex {
-				maxVertex = line.v
+			if Line.V > MaxVertex {
+				MaxVertex = Line.V
 			}
-			mu.Unlock()
+			Mu.Unlock()
 		}
-		done <- true
+		Done <- true
 	}()
 
-	wg.Wait()
-	close(mappedLines)
-	<-done
+	Wg.Wait()
+	close(MappedLines)
+	<-Done
 
 	file.Seek(0, 0)
-	scanner = bufio.NewScanner(file)
-	for scanner.Scan() {
-		line := scanner.Text()
-		if strings.HasPrefix(line, "%") || len(strings.TrimSpace(line)) == 0 {
+	Scanner = bufio.NewScanner(file)
+	for Scanner.Scan() {
+		Line := Scanner.Text()
+		if strings.HasPrefix(Line, "%") || len(strings.TrimSpace(Line)) == 0 {
 			continue
 		}
 
-		fields := strings.Fields(line)
-		if len(fields) != 3 {
+		Fields := strings.Fields(Line)
+		if len(Fields) != 3 {
 			continue
 		}
 
-		u, err1 := strconv.Atoi(fields[0])
-		v, err2 := strconv.Atoi(fields[1])
-		w, err3 := strconv.Atoi(fields[2])
-		if w < 0 {
-			w = -w
+		U, Err1 := strconv.Atoi(Fields[0])
+		V, Err2 := strconv.Atoi(Fields[1])
+		W, Err3 := strconv.Atoi(Fields[2])
+		if W < 0 {
+			W = -W
 		}
 
-		if err1 == nil && err2 == nil && err3 == nil {
-			// Normalize vertices to start from 0
-			normalizedU := u - minVertex
-			normalizedV := v - minVertex
-			adjList[normalizedU] = append(adjList[normalizedU],
-				Edge{normalizedU, normalizedV, w})
-			adjList[normalizedV] = append(adjList[normalizedV],
-				Edge{normalizedV, normalizedU, w})
+		if Err1 == nil && Err2 == nil && Err3 == nil {
+			NormalizedU := U - MinVertex
+			NormalizedV := V - MinVertex
+			AdjList[NormalizedU] = append(AdjList[NormalizedU],
+				Edge{NormalizedU, NormalizedV, W})
+			AdjList[NormalizedV] = append(AdjList[NormalizedV],
+				Edge{NormalizedV, NormalizedU, W})
 		}
 	}
 
-	// Adjust maxVertex to reflect normalized numbering
-	maxVertex = maxVertex - minVertex
+	MaxVertex = MaxVertex - MinVertex
 
-	return adjList, maxVertex
+	return AdjList, MaxVertex
 }
-func PrintAdjList(adjList map[int][]Edge) {
-	vertices := make([]int, 0, len(adjList))
-	for v := range adjList {
-		vertices = append(vertices, v)
-	}
-	sort.Ints(vertices)
 
-	for _, v := range vertices {
-		fmt.Printf("Vertex %d -> ", v)
-		edges := adjList[v]
-		for i, edge := range edges {
-			if i > 0 {
+func PrintAdjList(AdjList map[int][]Edge) {
+	Vertices := make([]int, 0, len(AdjList))
+	for V := range AdjList {
+		Vertices = append(Vertices, V)
+	}
+	sort.Ints(Vertices)
+
+	for _, V := range Vertices {
+		fmt.Printf("Vertex %d -> ", V)
+		Edges := AdjList[V]
+		for I, Edge := range Edges {
+			if I > 0 {
 				fmt.Print(", ")
 			}
-			fmt.Printf("(%d, w:%d)", edge.v, edge.w)
+			fmt.Printf("(%d, W:%d)", Edge.V, Edge.W)
 		}
 		fmt.Println()
 	}
 }
 
-func GetWorkerComponents(dsu *DisjointSetUnion, numWorkers int) [][]int {
-	componentSet := make(map[int]bool)
-	for _, parent := range dsu.Parent {
-		componentSet[dsu.Find(parent)] = true
+func GetWorkerComponents(Dsu *DisjointSetUnion, NumWorkers int) [][]int {
+	ComponentSet := make(map[int]bool)
+	for _, Parent := range Dsu.Parent {
+		ComponentSet[Dsu.Find(Parent)] = true
 	}
 
-	components := make([]int, 0, len(componentSet))
-	for comp := range componentSet {
-		components = append(components, comp)
+	Components := make([]int, 0, len(ComponentSet))
+	for Comp := range ComponentSet {
+		Components = append(Components, Comp)
 	}
-	sort.Ints(components)
+	sort.Ints(Components)
 
-	totalComponents := len(components)
-	workerComponents := make([][]int, numWorkers)
-	componentsPerWorker := totalComponents / numWorkers
+	TotalComponents := len(Components)
+	WorkerComponents := make([][]int, NumWorkers)
+	ComponentsPerWorker := TotalComponents / NumWorkers
 
-	for i := 0; i < numWorkers; i++ {
-		start := i * componentsPerWorker
-		end := start + componentsPerWorker
-		if i == numWorkers-1 {
-			end = totalComponents
+	for I := 0; I < NumWorkers; I++ {
+		Start := I * ComponentsPerWorker
+		End := Start + ComponentsPerWorker
+		if I == NumWorkers-1 {
+			End = TotalComponents
 		}
-		workerComponents[i] = components[start:end]
+		WorkerComponents[I] = Components[Start:End]
 	}
 
-	return workerComponents
+	return WorkerComponents
 }
 
-func GetComponentOutgoingEdges(workerComps []int, adjList map[int][]Edge, dsu *DisjointSetUnion) map[int][]Edge {
-	compSet := make(map[int]bool)
-	for _, comp := range workerComps {
-		compSet[comp] = true
+func GetComponentOutgoingEdges(WorkerComps []int, AdjList map[int][]Edge, Dsu *DisjointSetUnion) map[int][]Edge {
+	CompSet := make(map[int]bool)
+	for _, Comp := range WorkerComps {
+		CompSet[Comp] = true
 	}
 
-	compOutgoing := make(map[int][]Edge)
-	for comp := range compSet {
-		compOutgoing[comp] = make([]Edge, 0)
+	CompOutgoing := make(map[int][]Edge)
+	for Comp := range CompSet {
+		CompOutgoing[Comp] = make([]Edge, 0)
 	}
 
-	for u, edges := range adjList {
-		for _, edge := range edges {
-			v := edge.v
-			if dsu.Find(u) != dsu.Find(v) {
-				if compSet[dsu.Find(u)] {
-					compOutgoing[dsu.Find(u)] = append(compOutgoing[dsu.Find(u)], Edge{u, v, edge.w})
+	for U, Edges := range AdjList {
+		for _, e := range Edges {
+			V := e.V
+			if Dsu.Find(U) != Dsu.Find(V) {
+				if CompSet[Dsu.Find(U)] {
+					CompOutgoing[Dsu.Find(U)] = append(CompOutgoing[Dsu.Find(U)], Edge{U, V, e.W})
 				}
-				if compSet[dsu.Find(v)] {
-					compOutgoing[dsu.Find(v)] = append(compOutgoing[dsu.Find(v)], Edge{v, u, edge.w})
+				if CompSet[Dsu.Find(V)] {
+					CompOutgoing[Dsu.Find(V)] = append(CompOutgoing[Dsu.Find(V)], Edge{V, U, e.W})
 				}
 			}
 		}
 	}
+	return CompOutgoing
+}
 
-	return compOutgoing
+func GetPartitionID(ComponentID int, NumReducers int) int {
+	return ComponentID % NumReducers
+}
+
+func WriteMapResults(CompOutgoing map[int][]Edge, OutputDir string, TaskID int, NumReducers int) ([]string, error) {
+	PartitionsUsed := make(map[int]bool)
+
+	for Comp, Edges := range CompOutgoing {
+		PartitionID := GetPartitionID(Comp, NumReducers)
+		PartitionsUsed[PartitionID] = true
+
+		PartitionDir := fmt.Sprintf("%s/%d", OutputDir, PartitionID)
+		if Err := os.MkdirAll(PartitionDir, 0755); Err != nil {
+			return nil, Err
+		}
+
+		OutFile := fmt.Sprintf("%s/task_%d.txt", PartitionDir, TaskID)
+		File, Err := os.Create(OutFile)
+		if Err != nil {
+			return nil, Err
+		}
+		defer File.Close()
+
+		for _, Edge := range Edges {
+			_, Err := fmt.Fprintf(File, "%d %d %d\n", Edge.U, Edge.V, Edge.W)
+			if Err != nil {
+				return nil, Err
+			}
+		}
+	}
+
+	Partitions := make([]string, 0, len(PartitionsUsed))
+	for P := range PartitionsUsed {
+		Partitions = append(Partitions, fmt.Sprintf("%d", P))
+	}
+	sort.Strings(Partitions)
+
+	return Partitions, nil
+}
+
+func ReadDirectoryEdges(directory string) ([]Edge, error) {
+   files, err := os.ReadDir(directory)
+   if err != nil {
+       return nil, fmt.Errorf("error reading directory: %v", err)
+   }
+
+   var edges []Edge
+   for _, file := range files {
+       if file.IsDir() {
+           continue
+       }
+
+       filePath := filepath.Join(directory, file.Name())
+       file, err := os.Open(filePath)
+       if err != nil {
+           return nil, fmt.Errorf("error opening file %s: %v", filePath, err)
+       }
+       defer file.Close()
+
+       scanner := bufio.NewScanner(file)
+       for scanner.Scan() {
+           line := scanner.Text()
+           fields := strings.Fields(line)
+           if len(fields) != 3 {
+               continue
+           }
+
+           u, err1 := strconv.Atoi(fields[0])
+           v, err2 := strconv.Atoi(fields[1])
+           w, err3 := strconv.Atoi(fields[2])
+
+           if err1 != nil || err2 != nil || err3 != nil {
+               continue
+           }
+
+           edges = append(edges, Edge{u, v, w})
+       }
+   }
+
+   return edges, nil
 }

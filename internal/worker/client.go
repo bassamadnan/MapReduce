@@ -29,13 +29,13 @@ func CompleteTask(client mpb.MasterServiceClient, worker_id string, task_id int,
 	return nil
 }
 
-func PingReady(client mpb.MasterServiceClient, worker_id string) error {
+func PingReady(client mpb.MasterServiceClient, worker_id string) (int, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second) // timeout for ping
 	defer cancel()
-	client.Ready(ctx, &mpb.WorkerStatus{
+	numReducers, _ := client.Ready(ctx, &mpb.WorkerStatus{
 		WorkerId: worker_id,
 	})
-	return nil
+	return int(numReducers.NumReducers), nil
 }
 
 func (s *Server) ExecuteReduceTask(partition int, addr string, wg *sync.WaitGroup) {

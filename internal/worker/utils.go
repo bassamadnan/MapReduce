@@ -26,7 +26,8 @@ func (w *WorkerMachine) Initialize(master_addr string, port string, graphFilePat
 	w.DSU = utils.NewDSU(len(w.AdjList))
 	w.NumVertices = len(w.AdjList)
 	utils.PrintAdjList(w.AdjList)
-	PingReady(w.Client, port)
+	numReducers, _ := PingReady(w.Client, port)
+	w.NumReducers = numReducers
 }
 
 func (w *WorkerMachine) SetupWorkerMachine(master_addr string) {

@@ -27,10 +27,25 @@ func (w *WorkerMachine) execTask(components []int32, dsuParent []int32, taskID i
 	for comp, edges := range results {
 		fmt.Printf("Component %d outgoing edges: %v\n", comp, edges)
 	}
-
-	// To be implemented:
-	// outFile := fmt.Sprintf("%v/task_%v.txt", w.OutputDirectory, taskID)
-	// paritions, _ := WriteMapResults(results, w.OutputDirectory, taskID)
+	partitions, err := utils.WriteMapResults(results, w.OutputDirectory, taskID, w.NumReducers)
+	if err != nil {
+		fmt.Printf("Error writing map results: %v\n", err)
+		return
+	}
+	fmt.Println("Partitions written:", partitions)
+	// verify
+	// for _, partition := range partitions {
+	// 	dirPath := fmt.Sprintf("%s/%s", w.OutputDirectory, partition)
+	// 	edges, err := utils.ReadDirectoryEdges(dirPath)
+	// 	if err != nil {
+	// 		fmt.Printf("Error reading partition %s: %v\n", partition, err)
+	// 		continue
+	// 	}
+	// 	fmt.Printf("\nRead from partition %s:\n", partition)
+	// 	for _, edge := range edges {
+	// 		fmt.Printf("Edge: %d -> %d (weight: %d)\n", edge.U, edge.V, edge.W)
+	// 	}
+	// }
 	// CompleteTask(w.Client, w.ID, taskID, true, paritions)
 }
 

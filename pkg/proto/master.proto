@@ -4,7 +4,7 @@ option go_package="pkg/proto/master;mpb"; // master protobuf
 
 service MasterService{
     rpc CompleteTask(TaskStatus) returns (Empty) {}
-    rpc Ready(WorkerStatus) returns (Empty) {}
+    rpc Ready(WorkerStatus) returns (ReadyResponse) {}
 }
 
 message Empty {}
@@ -18,4 +18,8 @@ message TaskStatus {
 
 message WorkerStatus{
     string worker_id = 1;
+}
+
+message ReadyResponse{
+    int32 NumReducers = 1; // used for mapper
 }
