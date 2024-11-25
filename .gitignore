@@ -1,1 +1,3 @@
 data/output/localhost*
+.mypy_cache
+.ropeproject

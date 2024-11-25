@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 
+	utils "mapreduce/pkg"
 	mpb "mapreduce/pkg/proto/master"
 	wpb "mapreduce/pkg/proto/worker"
 	"sync"
@@ -22,10 +23,15 @@ type WorkerInfo struct {
 type Server struct {
 	mpb.UnimplementedMasterServiceServer
 	NumWorkers      int
+	NumWorkersReady int
+	NumVertices     int
 	Mu              sync.Mutex
 	Tasks           []Task             // list of tasks, to be cleared after map phase
 	ServiceRegistry []string           // list of all worker machine address (indxes for the map blow)
 	Workers         map[string]*Worker // worker[x] -> worker having id localhost:xxxx (xxxx : port number)
+	AdjList         map[int][]utils.Edge
+	MST             []utils.Edge
+	DSU             *utils.DisjointSetUnion
 }
 
 // function to initialize the worker list
@@ -66,8 +72,6 @@ func (s *Server) CloseAllConnections() {
 	}
 }
 
-// CompleteTask(context.Context, *TaskStatus) (*Empty, error)
-
 func (s *Server) CompleteTask(ctx context.Context, req *mpb.TaskStatus) (*mpb.Empty, error) {
 	fmt.Printf("Task %v completd by worker %v saved on partitions: %v\n", req.TaskId, req.WorkerId, req.Partitions)
 	s.Mu.Lock()
@@ -92,4 +96,14 @@ func (s *Server) CompleteTask(ctx context.Context, req *mpb.TaskStatus) (*mpb.Em
 	s.Mu.Unlock()
 	go s.AssignMapTasks() // assign remaining tasks
 	return &mpb.Empty{}, nil
+}
+
+func (s *Server) Ready(ctx context.Context, req *mpb.WorkerStatus) (*mpb.Empty, error) {
+	id := req.WorkerId
+	fmt.Printf("Worker wiht %v ready! \n", id)
+	s.Mu.Lock()
+	s.NumWorkersReady += 1
+	s.Mu.Unlock()
+
+	return nil, nil
 }

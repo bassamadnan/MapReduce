@@ -29,6 +29,15 @@ func CompleteTask(client mpb.MasterServiceClient, worker_id string, task_id int,
 	return nil
 }
 
+func PingReady(client mpb.MasterServiceClient, worker_id string) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second) // timeout for ping
+	defer cancel()
+	client.Ready(ctx, &mpb.WorkerStatus{
+		WorkerId: worker_id,
+	})
+	return nil
+}
+
 func (s *Server) ExecuteReduceTask(partition int, addr string, wg *sync.WaitGroup) {
 	defer wg.Done()
 	opts := []grpc.DialOption{grpc.WithTransportCredentials(insecure.NewCredentials())}

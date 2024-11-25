@@ -20,6 +20,7 @@ func (w *WorkerMachine) Initialize(master_addr string, port string) {
 	w.OutputDirectory = outputPath
 	w.SetupWorkerMachine(w.MasterAddr)
 	w.ServerInstance.ReduceResults = make(map[string]int)
+	PingReady(w.Client, port)
 }
 
 func (w *WorkerMachine) SetupWorkerMachine(master_addr string) {

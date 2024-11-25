@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	m_utils "mapreduce/internal/master"
+	utils "mapreduce/pkg"
 	mpb "mapreduce/pkg/proto/master"
 	"net"
 	"os"
@@ -31,14 +32,21 @@ const (
 )
 
 func main() {
+	adjList, _ := utils.ReadMTXFile("data/input/19.mtx")
+	utils.PrintAdjList(adjList)
 	// setup server
 	lis, err := net.Listen("tcp", fmt.Sprintf(":%d", 5050))
 	if err != nil {
 		log.Fatalf("failed to listen: %v", err)
 	}
 	masterServer := &m_utils.Server{
-		NumWorkers: NUM_WORKERS,
+		NumWorkers:  NUM_WORKERS,
+		NumVertices: len(adjList),
+		DSU:         utils.NewDSU(len(adjList)),
+		AdjList:     adjList,
+		MST:         make([]utils.Edge, 0),
 	}
+	fmt.Println(masterServer.DSU.Parent)
 	s := grpc.NewServer()
 	mpb.RegisterMasterServiceServer(s, masterServer)
 	go func() {
@@ -53,6 +61,12 @@ func main() {
 		Split:         DEFAULT_SPLIT,
 	})
 	fmt.Printf(("%v\n"), tasks)
+	for {
+		if masterServer.NumWorkersReady == NUM_WORKERS {
+			break
+		}
+	}
+	fmt.Print("All workers ready!\n")
 	// connect to all worker machines
 
 	serviceRegistry := []m_utils.WorkerInfo{

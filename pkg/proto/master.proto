@@ -4,6 +4,7 @@ option go_package="pkg/proto/master;mpb"; // master protobuf
 
 service MasterService{
     rpc CompleteTask(TaskStatus) returns (Empty) {}
+    rpc Ready(WorkerStatus) returns (Empty) {}
 }
 
 message Empty {}
@@ -13,4 +14,8 @@ message TaskStatus {
     string worker_id =2;
     bool status = 3;
     repeated int32 partitions = 4;
+}
+
+message WorkerStatus{
+    string worker_id = 1;
 }

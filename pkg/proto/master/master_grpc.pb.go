@@ -20,6 +20,7 @@ const _ = grpc.SupportPackageIsVersion9
 
 const (
 	MasterService_CompleteTask_FullMethodName = "/m_mapreduce.MasterService/CompleteTask"
+	MasterService_Ready_FullMethodName        = "/m_mapreduce.MasterService/Ready"
 )
 
 // MasterServiceClient is the client API for MasterService service.
@@ -27,6 +28,7 @@ const (
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type MasterServiceClient interface {
 	CompleteTask(ctx context.Context, in *TaskStatus, opts ...grpc.CallOption) (*Empty, error)
+	Ready(ctx context.Context, in *WorkerStatus, opts ...grpc.CallOption) (*Empty, error)
 }
 
 type masterServiceClient struct {
@@ -47,11 +49,22 @@ func (c *masterServiceClient) CompleteTask(ctx context.Context, in *TaskStatus, 
 	return out, nil
 }
 
+func (c *masterServiceClient) Ready(ctx context.Context, in *WorkerStatus, opts ...grpc.CallOption) (*Empty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(Empty)
+	err := c.cc.Invoke(ctx, MasterService_Ready_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // MasterServiceServer is the server API for MasterService service.
 // All implementations must embed UnimplementedMasterServiceServer
 // for forward compatibility.
 type MasterServiceServer interface {
 	CompleteTask(context.Context, *TaskStatus) (*Empty, error)
+	Ready(context.Context, *WorkerStatus) (*Empty, error)
 	mustEmbedUnimplementedMasterServiceServer()
 }
 
@@ -64,6 +77,9 @@ type UnimplementedMasterServiceServer struct{}
 
 func (UnimplementedMasterServiceServer) CompleteTask(context.Context, *TaskStatus) (*Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method CompleteTask not implemented")
+}
+func (UnimplementedMasterServiceServer) Ready(context.Context, *WorkerStatus) (*Empty, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Ready not implemented")
 }
 func (UnimplementedMasterServiceServer) mustEmbedUnimplementedMasterServiceServer() {}
 func (UnimplementedMasterServiceServer) testEmbeddedByValue()                       {}
@@ -104,6 +120,24 @@ func _MasterService_CompleteTask_Handler(srv interface{}, ctx context.Context, d
 	return interceptor(ctx, in, info, handler)
 }
 
+func _MasterService_Ready_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(WorkerStatus)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MasterServiceServer).Ready(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: MasterService_Ready_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MasterServiceServer).Ready(ctx, req.(*WorkerStatus))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // MasterService_ServiceDesc is the grpc.ServiceDesc for MasterService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -114,6 +148,10 @@ var MasterService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "CompleteTask",
 			Handler:    _MasterService_CompleteTask_Handler,
+		},
+		{
+			MethodName: "Ready",
+			Handler:    _MasterService_Ready_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
