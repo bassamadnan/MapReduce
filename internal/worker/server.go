@@ -4,21 +4,34 @@ import (
 	"context"
 	"fmt"
 	c_utils "mapreduce/internal/common"
+	utils "mapreduce/pkg"
 	wpb "mapreduce/pkg/proto/worker"
 )
 
-// handle error here
-func (w *WorkerMachine) execTask(start int, end int, taskID int, filePath string) {
-	lines := c_utils.GetLines(start, end, filePath)
-	results := c_utils.Map(lines)
-	fmt.Printf("results :%v\n", results)
-	outFile := fmt.Sprintf("%v/task_%v.txt", w.OutputDirectory, taskID)
-	fmt.Printf("writing to %v\n", outFile)
-	paritions, _ := c_utils.WriteMapResults(results, w.OutputDirectory, taskID)
-	// notify master about this next
+func (w *WorkerMachine) execTask(components []int32, dsuParent []int32, taskID int) {
+	// Convert int32 slices back to int for our utilities
+	comps := make([]int, len(components))
+	for i, c := range components {
+		comps[i] = int(c)
+	}
 
-	// fmt.Print(w.Client, w.ID, taskID, true)
-	CompleteTask(w.Client, w.ID, taskID, true, paritions)
+	dsu := &utils.DisjointSetUnion{
+		Parent: make([]int, len(dsuParent)),
+	}
+	for i, p := range dsuParent {
+		dsu.Parent[i] = int(p)
+	}
+
+	results := utils.GetComponentOutgoingEdges(comps, w.AdjList, dsu)
+	fmt.Printf("Task %d Results:\n", taskID)
+	for comp, edges := range results {
+		fmt.Printf("Component %d outgoing edges: %v\n", comp, edges)
+	}
+
+	// To be implemented:
+	// outFile := fmt.Sprintf("%v/task_%v.txt", w.OutputDirectory, taskID)
+	// paritions, _ := WriteMapResults(results, w.OutputDirectory, taskID)
+	// CompleteTask(w.Client, w.ID, taskID, true, paritions)
 }
 
 // SendTask(context.Context, *TaskDescription) (*Empty, error)
@@ -26,8 +39,9 @@ func (s *Server) SendMapTask(ctx context.Context, task *wpb.MapTaskDescription) 
 	fmt.Printf("Received task ID: %d\n", task.TaskID)
 	fmt.Printf("Worker Components: %v\n", task.WorkerComponent)
 	fmt.Printf("DSU length: %d\n", len(task.DSU))
+	// go s.WorkerMachineInstance.execTask(int(start), int(end), int(taskid), s.InputFile)
 
-	// go s.WorkerMachineInstance.execTask(task.WorkerComponent, task.DSU, int(task.TaskID))
+	go s.WorkerMachineInstance.execTask(task.WorkerComponent, task.DSU, int(task.TaskID))
 
 	return &wpb.Empty{}, nil
 }
