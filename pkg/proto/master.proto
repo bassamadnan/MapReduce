@@ -4,6 +4,9 @@ option go_package="pkg/proto/master;mpb"; // master protobuf
 
 service MasterService{
     rpc CompleteTask(TaskStatus) returns (Empty) {}
+    rpc Ready(WorkerStatus) returns (ReadyResponse) {}
+    rpc SendMinEdge(EdgeInfo) returns (Empty) {}
+    rpc Complete(Empty) returns (Empty) {}
 }
 
 message Empty {}
@@ -13,4 +16,19 @@ message TaskStatus {
     string worker_id =2;
     bool status = 3;
     repeated int32 partitions = 4;
+}
+
+message WorkerStatus{
+    string worker_id = 1;
+}
+
+message ReadyResponse{
+    int32 NumReducers = 1; // used for mapper
+}
+
+message EdgeInfo{
+    int32 component = 1;
+    int32 u = 2;
+    int32 v = 3;
+    int32 w = 4;
 }

@@ -29,7 +29,7 @@ const (
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type WorkerServiceClient interface {
-	SendMapTask(ctx context.Context, in *TaskDescription, opts ...grpc.CallOption) (*Empty, error)
+	SendMapTask(ctx context.Context, in *MapTaskDescription, opts ...grpc.CallOption) (*Empty, error)
 	Ping(ctx context.Context, in *PingRequest, opts ...grpc.CallOption) (*PingResponse, error)
 	SendReduceTask(ctx context.Context, in *ReduceTaskDescription, opts ...grpc.CallOption) (*Empty, error)
 	GetPartitionData(ctx context.Context, in *Partition, opts ...grpc.CallOption) (*Data, error)
@@ -43,7 +43,7 @@ func NewWorkerServiceClient(cc grpc.ClientConnInterface) WorkerServiceClient {
 	return &workerServiceClient{cc}
 }
 
-func (c *workerServiceClient) SendMapTask(ctx context.Context, in *TaskDescription, opts ...grpc.CallOption) (*Empty, error) {
+func (c *workerServiceClient) SendMapTask(ctx context.Context, in *MapTaskDescription, opts ...grpc.CallOption) (*Empty, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(Empty)
 	err := c.cc.Invoke(ctx, WorkerService_SendMapTask_FullMethodName, in, out, cOpts...)
@@ -87,7 +87,7 @@ func (c *workerServiceClient) GetPartitionData(ctx context.Context, in *Partitio
 // All implementations must embed UnimplementedWorkerServiceServer
 // for forward compatibility.
 type WorkerServiceServer interface {
-	SendMapTask(context.Context, *TaskDescription) (*Empty, error)
+	SendMapTask(context.Context, *MapTaskDescription) (*Empty, error)
 	Ping(context.Context, *PingRequest) (*PingResponse, error)
 	SendReduceTask(context.Context, *ReduceTaskDescription) (*Empty, error)
 	GetPartitionData(context.Context, *Partition) (*Data, error)
@@ -101,7 +101,7 @@ type WorkerServiceServer interface {
 // pointer dereference when methods are called.
 type UnimplementedWorkerServiceServer struct{}
 
-func (UnimplementedWorkerServiceServer) SendMapTask(context.Context, *TaskDescription) (*Empty, error) {
+func (UnimplementedWorkerServiceServer) SendMapTask(context.Context, *MapTaskDescription) (*Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method SendMapTask not implemented")
 }
 func (UnimplementedWorkerServiceServer) Ping(context.Context, *PingRequest) (*PingResponse, error) {
@@ -135,7 +135,7 @@ func RegisterWorkerServiceServer(s grpc.ServiceRegistrar, srv WorkerServiceServe
 }
 
 func _WorkerService_SendMapTask_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(TaskDescription)
+	in := new(MapTaskDescription)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -147,7 +147,7 @@ func _WorkerService_SendMapTask_Handler(srv interface{}, ctx context.Context, de
 		FullMethod: WorkerService_SendMapTask_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(WorkerServiceServer).SendMapTask(ctx, req.(*TaskDescription))
+		return srv.(WorkerServiceServer).SendMapTask(ctx, req.(*MapTaskDescription))
 	}
 	return interceptor(ctx, in, info, handler)
 }

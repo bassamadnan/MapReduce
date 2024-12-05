@@ -3,29 +3,60 @@ package w_utils
 import (
 	"context"
 	"fmt"
-	c_utils "mapreduce/internal/common"
+	utils "mapreduce/pkg"
 	wpb "mapreduce/pkg/proto/worker"
 )
 
-// handle error here
-func (w *WorkerMachine) execTask(start int, end int, taskID int, filePath string) {
-	lines := c_utils.GetLines(start, end, filePath)
-	results := c_utils.Map(lines)
-	fmt.Printf("results :%v\n", results)
-	outFile := fmt.Sprintf("%v/task_%v.txt", w.OutputDirectory, taskID)
-	fmt.Printf("writing to %v\n", outFile)
-	paritions, _ := c_utils.WriteMapResults(results, w.OutputDirectory, taskID)
-	// notify master about this next
+func (w *WorkerMachine) execTask(components []int32, dsuParent []int32, taskID int) {
+	// Convert int32 slices back to int for our utilities
+	comps := make([]int, len(components))
+	for i, c := range components {
+		comps[i] = int(c)
+	}
 
-	// fmt.Print(w.Client, w.ID, taskID, true)
-	CompleteTask(w.Client, w.ID, taskID, true, paritions)
+	dsu := &utils.DisjointSetUnion{
+		Parent: make([]int, len(dsuParent)),
+	}
+	for i, p := range dsuParent {
+		dsu.Parent[i] = int(p)
+	}
+
+	results := utils.GetComponentOutgoingEdges(comps, w.AdjList, dsu)
+	fmt.Printf("Task %d Results:\n", taskID)
+	for comp, edges := range results {
+		fmt.Printf("Component %d outgoing edges: %v\n", comp, edges)
+	}
+	partitions, err := utils.WriteMapResults(results, w.OutputDirectory, taskID, w.NumReducers)
+	if err != nil {
+		fmt.Printf("Error writing map results: %v\n", err)
+		return
+	}
+	fmt.Println("Partitions written:", partitions)
+	// verify
+	// for _, partition := range partitions {
+	// 	dirPath := fmt.Sprintf("%s/%s", w.OutputDirectory, partition)
+	// 	edges, err := utils.ReadDirectoryEdges(dirPath)
+	// 	if err != nil {
+	// 		fmt.Printf("Error reading partition %s: %v\n", partition, err)
+	// 		continue
+	// 	}
+	// 	fmt.Printf("\nRead from partition %s:\n", partition)
+	// 	for _, edge := range edges {
+	// 		fmt.Printf("Edge: %d -> %d (weight: %d)\n", edge.U, edge.V, edge.W)
+	// 	}
+	// }
+	CompleteTask(w.Client, w.ID, taskID, true, partitions)
 }
 
 // SendTask(context.Context, *TaskDescription) (*Empty, error)
-func (s *Server) SendMapTask(ctx context.Context, task *wpb.TaskDescription) (*wpb.Empty, error) {
-	start, end, taskid := task.Start, task.End, task.TaskID
-	fmt.Printf("Recieved task start: %d, %d\n", start, end)
-	go s.WorkerMachineInstance.execTask(int(start), int(end), int(taskid), s.InputFile)
+func (s *Server) SendMapTask(ctx context.Context, task *wpb.MapTaskDescription) (*wpb.Empty, error) {
+	fmt.Printf("Received task ID: %d\n", task.TaskID)
+	fmt.Printf("Worker Components: %v\n", task.WorkerComponent)
+	fmt.Printf("DSU length: %d\n", len(task.DSU))
+	// go s.WorkerMachineInstance.execTask(int(start), int(end), int(taskid), s.InputFile)
+
+	go s.WorkerMachineInstance.execTask(task.WorkerComponent, task.DSU, int(task.TaskID))
+
 	return &wpb.Empty{}, nil
 }
 
@@ -46,22 +77,28 @@ func (s *Server) SendReduceTask(ctx context.Context, req *wpb.ReduceTaskDescript
 
 func (s *Server) GetPartitionData(ctx context.Context, req *wpb.Partition) (*wpb.Data, error) {
 	directory := fmt.Sprintf("%v/%v", s.WorkerMachineInstance.OutputDirectory, req.Partition)
-	dataMap := c_utils.GetPartitionData(directory)
+	compEdges, err := utils.ReadDirectoryEdges(directory)
+	if err != nil {
+		return nil, fmt.Errorf("error reading partition %d: %v", req.Partition, err)
+	}
 
-	grpcData := make([]*wpb.KeyValue, 0, len(dataMap))
-	for key, values := range dataMap {
-		valueList := make([]int32, len(values))
-		for i, v := range values {
-			valueList[i] = int32(v)
+	protoCompEdges := make([]*wpb.ComponentEdges, 0, len(compEdges))
+	for comp, edges := range compEdges {
+		protoEdges := make([]*wpb.Edge, len(edges))
+		for i, edge := range edges {
+			protoEdges[i] = &wpb.Edge{
+				U: int32(edge.U),
+				V: int32(edge.V),
+				W: int32(edge.W),
+			}
 		}
-		fmt.Printf("Gathered data- %v : %v\n", key, valueList)
-		grpcData = append(grpcData, &wpb.KeyValue{
-			Key:   key,
-			Value: valueList,
+		protoCompEdges = append(protoCompEdges, &wpb.ComponentEdges{
+			ComponentId: int32(comp),
+			Edges:       protoEdges,
 		})
 	}
 
 	return &wpb.Data{
-		Kv: grpcData,
+		CompEdges: protoCompEdges,
 	}, nil
 }

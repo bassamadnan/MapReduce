@@ -4,8 +4,10 @@ import (
 	"context"
 	"fmt"
 	"log"
+	utils "mapreduce/pkg"
 	mpb "mapreduce/pkg/proto/master"
 	wpb "mapreduce/pkg/proto/worker"
+	"math"
 	"sync"
 	"time"
 
@@ -29,12 +31,42 @@ func CompleteTask(client mpb.MasterServiceClient, worker_id string, task_id int,
 	return nil
 }
 
+func PingReady(client mpb.MasterServiceClient, worker_id string) (int, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second) // timeout for ping
+	defer cancel()
+	numReducers, _ := client.Ready(ctx, &mpb.WorkerStatus{
+		WorkerId: worker_id,
+	})
+	return int(numReducers.NumReducers), nil
+}
+
+func SendEdge(client mpb.MasterServiceClient, component int, edge utils.Edge) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second) // timeout for ping
+	defer cancel()
+	client.SendMinEdge(ctx, &mpb.EdgeInfo{
+		Component: int32(component),
+		U:         int32(edge.U),
+		V:         int32(edge.V),
+		W:         int32(edge.W),
+	})
+	return nil
+}
+func Complete(client mpb.MasterServiceClient) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second) // timeout for ping
+	defer cancel()
+	client.Complete(ctx, &mpb.Empty{})
+	return nil
+}
+
 func (s *Server) ExecuteReduceTask(partition int, addr string, wg *sync.WaitGroup) {
 	defer wg.Done()
+
+	// Setup connection
 	opts := []grpc.DialOption{grpc.WithTransportCredentials(insecure.NewCredentials())}
 	conn, err := grpc.NewClient(addr, opts...)
 	if err != nil {
-		log.Fatalf("conn failed %v", err)
+		log.Printf("Failed to connect to %s: %v", addr, err)
+		return
 	}
 	defer conn.Close()
 
@@ -42,31 +74,51 @@ func (s *Server) ExecuteReduceTask(partition int, addr string, wg *sync.WaitGrou
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
+	// Get edges from mapper output
 	resp, err := client.GetPartitionData(ctx, &wpb.Partition{Partition: int32(partition)})
 	if err != nil {
-		log.Fatalf("Error in get partition data client %v\n", err)
+		log.Printf("Error getting partition data from %s: %v", addr, err)
+		return
 	}
 
-	dataMap := make(map[string][]int)
-	for _, kv := range resp.Kv {
-		values := make([]int, len(kv.Value))
-		for i, v := range kv.Value {
-			values[i] = int(v)
-		}
-		dataMap[kv.Key] = values
-	}
+	// Process each component's edges
+	for _, compEdges := range resp.CompEdges {
+		comp := int(compEdges.ComponentId)
+		minEdge := utils.Edge{W: math.MaxInt32}
 
-	for key, values := range dataMap {
-		sum := 0
-		for _, v := range values {
-			sum += v
+		// Find minimum edge for this component
+		for _, e := range compEdges.Edges {
+			edge := utils.Edge{
+				U: int(e.U),
+				V: int(e.V),
+				W: int(e.W),
+			}
+
+			if edge.W < minEdge.W {
+				minEdge = edge
+			}
 		}
-		s.Mu.Lock()
-		s.ReduceResults[key] += sum
-		s.Mu.Unlock()
+
+		if minEdge.W != math.MaxInt32 {
+			s.Mu.Lock()
+			if s.MinOutgoingEdges == nil {
+				s.MinOutgoingEdges = make(map[int]utils.Edge)
+			}
+			if currEdge, exists := s.MinOutgoingEdges[comp]; !exists || minEdge.W < currEdge.W {
+				s.MinOutgoingEdges[comp] = minEdge
+			}
+			s.Mu.Unlock()
+		}
 	}
+	s.Mu.Lock()
+	fmt.Printf("\nCurrent minimum edges after processing partition %d from %s:\n", partition, addr)
+	for comp, edge := range s.MinOutgoingEdges {
+		fmt.Printf("Component %d: %d -> %d (weight: %d)\n", comp, edge.U, edge.V, edge.W)
+		SendEdge(s.WorkerMachineInstance.Client, comp, edge)
+	}
+	Complete(s.WorkerMachineInstance.Client) // this reducer is done!
+	s.Mu.Unlock()
 }
-
 func (s *Server) StartReduceTask(partition int, addresses []string) {
 	var wg sync.WaitGroup
 	wg.Add(len(addresses))

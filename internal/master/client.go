@@ -8,16 +8,27 @@ import (
 	"time"
 )
 
-func SendMapTask(client wpb.WorkerServiceClient, task *Task) error {
+func (s *Server) SendMapTask(client wpb.WorkerServiceClient, task *Task) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
-	_, err := client.SendMapTask(ctx, &wpb.TaskDescription{
-		Start:  int32(task.Start),
-		End:    int32(task.End),
-		TaskID: int32(task.TaskID),
+
+	dsuParent := make([]int32, len(s.DSU.Parent))
+	for i, p := range s.DSU.Parent {
+		dsuParent[i] = int32(p)
+	}
+
+	components := make([]int32, len(task.Components))
+	for i, comp := range task.Components {
+		components[i] = int32(comp)
+	}
+
+	_, err := client.SendMapTask(ctx, &wpb.MapTaskDescription{
+		WorkerComponent: components,
+		DSU:             dsuParent,
+		TaskID:          int32(task.TaskID),
 	})
 	if err != nil {
-		fmt.Printf("error in  sendtask %v to client %v\n", err, client)
+		fmt.Printf("error in sendtask %v to client %v\n", err, client)
 		return err
 	}
 	return nil
@@ -35,7 +46,7 @@ func (s *Server) AssignMapTasks() {
 			fmt.Print("all tasks over\n")
 			return
 		}
-		err := SendMapTask(worker.Client, task)
+		err := s.SendMapTask(worker.Client, task)
 		if err != nil {
 			s.Workers[i].Status = FAIL
 			s.Tasks[task.TaskID].TaskStatus = PENDING

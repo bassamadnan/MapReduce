@@ -3,7 +3,7 @@ package w_mapreduce;
 option go_package="pkg/proto/worker;wpb"; // worker protobuf
 
 service WorkerService{
-    rpc SendMapTask(TaskDescription) returns (Empty) {}
+    rpc SendMapTask(MapTaskDescription) returns (Empty) {}
     rpc Ping(PingRequest) returns (PingResponse) {}
     rpc SendReduceTask(ReduceTaskDescription) returns (Empty) {}
     rpc GetPartitionData(Partition) returns (Data) {}
@@ -14,6 +14,12 @@ message Empty {}
 message TaskDescription {
     int32 start = 1;
     int32 end = 2;
+    int32 taskID = 3;
+}
+
+message MapTaskDescription {
+    repeated int32 WorkerComponent = 1;
+    repeated int32 DSU = 2;
     int32 taskID = 3;
 }
 
@@ -38,6 +44,18 @@ message KeyValue {
     string key = 1;
     repeated int32 value = 2;
 }
-message Data{
-    repeated KeyValue kv = 1;
+
+message Edge {
+    int32 u = 1;
+    int32 v = 2;
+    int32 w = 3;
+}
+
+message ComponentEdges {
+    int32 component_id = 1;
+    repeated Edge edges = 2;
+}
+
+message Data {
+    repeated ComponentEdges comp_edges = 1;
 }
